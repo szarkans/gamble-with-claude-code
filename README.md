@@ -1,76 +1,79 @@
-# gambling-with-claude-code
+<h1 align="center">gamble with claude code</h1>
 
-Казино внутри терминала Claude Code: слоты, европейская рулетка и 21. Фишки — токены, которые агент сжёг сегодня, плюс чистый результат в казино. Реальных денег, покупок и вывода нет. Гемблинг — это плохо. Как и `--dangerously-skip-permissions`.
+<p align="center"><i>you're absolutely right! let it ride.</i></p>
 
-Нужны Claude Code **2.1.287+**, обычный интерактивный терминал и Python 3 в PATH. Мод пробует `python3`, `python`, затем Windows-лаунчер `py -3`; счётчик запускается с `-I`. Если Python 3 не найден, панель объясняет, что установить.
+<p align="center"><a href="README.ru.md">[🇷🇺 →]</a> · <a href="README.zh.md">[🇨🇳 →]</a> </p>
 
-Установка:
+<p align="center"><img src="docs/demo.gif" alt="slots, roulette and blackjack inside Claude Code" width="720"></p>
 
-```bash
-claude plugin marketplace add szarkans/gambling-with-claude-code
-claude plugin install gambling-with-claude-code@szarkans-gamble
+a casino right inside Claude Code. slots, roulette and blackjack — and you bet the tokens Claude Code actually burned today.
+
+<h2 align="center">what's this about?</h2>
+
+you burn millions of tokens a day anyway. might as well gamble them.
+
+- every token Claude Code burned since midnight is a token in your wallet.
+- lost it all? go back to work. the wallet refills with every prompt.
+- the wallet burns at midnight. like your context window, but daily.
+
+no real money. no buying, no cashing out. ever. it's a joke about gambling, not gambling.
+
+<h2 align="center">install</h2>
+
+```
+/plugin marketplace add szarkans/gamble-with-claude-code
+/plugin install gamble-with-claude-code@gamble-with-claude-code
+```
+or
+```
+claude plugin marketplace add szarkans/gamble-with-claude-code
+claude plugin install gamble-with-claude-code@gamble-with-claude-code
 ```
 
-Перезапусти Claude Code и введи `/casino`.
+then `/reload-plugins` (or restart Claude Code) and
 
-Автообновление: `/plugin` → Marketplaces → `szarkans-gamble` → Enable auto-update.
-
-Для запуска из клона:
-
-```bash
-claude --plugin-dir /path/to/gambling-with-claude-code
-# В открывшейся сессии: /casino
+```
+/casino
 ```
 
-Вкладки — **Слоты [z] / Рулетка [x] / 21 [c]** — стоят над табло, **ВЫХОД [q]** справа от них. Внизу пульт: общая ставка **10% [1] / 25% [2] / 50% [3] / ALL IN [4]** слева, главное действие справа; во время руки 21 — **ЕЩЁ / ХВАТИТ / DOUBLE**. На узкой панели блоки переносятся. Все действия доступны кликом. Панель открывается с фокусом, хоткеи подписаны на кнопках; **Esc** и **ВЫХОД [q]** закрывают казино. Пока идёт раунд или эффект, новые ставки блокируются, но смена вкладки сразу обрывает показ и раскрывает сохранённый баланс. Незаконченную руку 21 нужно доиграть перед сменой вкладки.
+requirements: Claude Code 2.1.287+ (the one with mods) and `python3` — it counts today's tokens, standard library only. runs in the terminal; mods don't draw in `claude -p` or the VS Code chat.
+make the terminal ~50 rows tall, or scroll the panel with PageDown.
 
-Слоты сохраняют выплаты демо: `777 ×20`, `$$$ ×10`, `✓✓✓ ×5`, `!!! ×3`, три `rm -rf ×50`; соседняя пара возвращает `×1.5`. У рулетки одно зеро, внешние ставки платят `1:1`, дюжины `2:1`, число `35:1`; выигрыш возвращает и ставку. Зеро проигрывает всем внешним ставкам. Над пультом пять групп: цвет, чётность, половина, дюжина и число. **− [j] / + [k]** меняют число с переходом 0 ↔ 36; клик по центральному жетону с числом или **[n]** выбирает ставку на него. Если ставка на число уже выбрана, она следует за **− / +**; другие ставки эти кнопки не переключают.
+want new games without lifting a finger? `/plugin` → Marketplaces → gamble-with-claude-code → **Enable auto-update**.
 
-В 21 новая колода из 52 карт на каждую руку. Дилер стоит на любых 17, включая мягкие. Блэкджек — только 21 на первых двух картах, платит `3:2`; два блэкджека дают ничью. **ЕЩЁ [h] / ХВАТИТ [s] / DOUBLE [d]**: double доступен с первыми двумя картами, списывает ещё одну исходную ставку, выдаёт ровно одну карту и завершает ход. Split и страховки нет. Фишки целые: дробные выплаты округляются вниз.
+<h2 align="center">games</h2>
 
-Победы — баннеры высотой пять строк, заметная тряска, вспышки, символы салюта и крупный докручивающийся счётчик чистого выигрыша. Эффект длится 2.6–3.8 секунды, итоговая сумма держится 800 мс; проигрыш глючит и темнеет на 720 мс. Одна сцена `Raster`, 25 кадров/с через `blit`, ниже лимита API в 120 обновлений/с. Лента рулетки движется и тормозит под неподвижным маркером; остановившаяся ячейка пульсирует 720 мс, результат показан крупно своим цветом. Карты со скруглёнными рамками, крупными мастями и узорной рубашкой прилетают и переворачиваются. На панели от 60 колонок руки 21 стоят рядом, на узкой — одна под другой. Сцена использует ширину панели, слот сохраняет пиксельные символы; лишние нижние строки и промежутки убраны. Явные контрастные цвета графики обеспечивают одинаковую палитру на светлой и тёмной теме.
+**slots** — three reels, 777 pays ×20, `rm -rf` ×3 pays ×50. don't ask.
 
-Отладка эффектов выключена по умолчанию и не показывает кнопок в обычной игре. API модов читает переменную через `$.env.get('GWCC_DEBUG')`. Для проверки запусти новую интерактивную сессию:
+**roulette** — european, 0–36. red/black, even/odd, halves, dozens, or a single number for 35:1.
 
-```bash
-GWCC_DEBUG=1 claude --plugin-dir /home/narko/dev/gambling-with-claude-code
-# Затем /casino
-```
+**blackjack** — dealer stands on 17, blackjack pays 3:2, double down. no split. yet.
 
-В режиме отладки выбери игру и нажми соответствующую клавишу или кнопку DEBUG:
+<h2 align="center">controls</h2>
 
-| Игра | Клавиша | Исход |
-| --- | --- | --- |
-| Слоты `[z]` | `t` / `y` / `v` | джекпот ×50 / выигрыш ×5 / проигрыш |
-| Рулетка `[x]` | `t` / `v` | выигрыш по выбранной ставке / проигрыш |
-| 21 `[c]` | `t` / `y` / `v` | блэкджек / победа 20:17 / перебор 24 |
+`z` `x` `c` — slots, roulette, blackjack  
+`1`–`4` — bet 10%, 25%, 50%, all in  
+`s` — spin / deal / stand  
+`h` — hit, `d` — double  
+`esc` or `q` — back to work
 
-Клавиша сразу запускает раунд со всей анимацией и обычным расчётом выплаты; в 21 сценарий сам доигрывает руку. Дождись завершения эффекта перед следующим запуском. Каждая форсированная проверка начинает с 10 000 виртуальных фишек и текущей доли ставки, поэтому проигрыш ALL IN не блокирует следующую проверку. Отладочный кошелёк и руки хранятся отдельно под `debug:day:YYYY-MM-DD`; обычный кошелёк не меняется. Для обычной игры запусти CLI без переменной или с `GWCC_DEBUG=0`.
+mouse clicks work too, where your terminal reports them.
 
-Баланс и незавершённая рука 21 хранятся локально в `$.store` под ключом `day:YYYY-MM-DD`. Дата и полночь берутся с хоста в той же временной зоне, что и счётчик токенов. Новая сессия в тот же день продолжает кошелёк и руку; в полночь начинается другой день без вчерашних фишек. Результат автоматических игр сохраняется перед анимацией, чтобы закрытие и reload не теряли выигрыш; баланс на экране раскрывает выплату после остановки. Последовательные сессии поддерживаются. Одновременную игру из нескольких сессий v1 не синхронизирует: у `$.store` нет атомарного сравнения и записи между процессами.
+<h2 align="center">how are tokens counted?</h2>
 
-Запись дня имеет `v: 1`; корректная предыдущая форма без версии читается с сохранением кошелька, чужая версия или повреждённая форма — как пустой день. После reload открытая панель восстанавливается через `session.start`: занятая фаза сбрасывается, опрос и отладка возвращаются, незаконченная рука продолжается из store. Повторное `/casino` не выплачивает рассчитанную руку и не переключает вкладку из-за её итогового изображения. Смена даты обнаруживается опросом каждые 5 секунд после завершения анимации. Счётчик читает `CLAUDE_CONFIG_DIR/projects`, если переменная задана, иначе `~/.claude/projects`; недоступные файлы пропускает.
+from Claude Code's own session logs on your machine (`~/.claude/projects`, or `$CLAUDE_CONFIG_DIR`). today's input + cache writes + output. cache reads don't count — re-reading the same context isn't work.
 
-Звуки — короткие синтезированные WAV в `sounds/`. `$.audio.play` воспроизводит их на macOS; Linux/Windows-терминалы молчат согласно API. Ошибки проигрывания не мешают игре. Сгенерировать те же файлы:
+nothing leaves your machine. the mod makes zero network calls.
 
-```bash
-python3 tools/gen_sounds.py
-```
+<h2 align="center">also</h2>
 
-Мод не работает в `claude -p`, SDK, чате VS Code и WSL-сессии десктопа. Проверять ощущение от анимаций нужно глазами в обычном терминале.
+- sound plays on macOS only. that's Claude Code, not us.
+- `GWCC_DEBUG=1 claude` gives you a separate fake wallet and buttons that force a jackpot. for screenshots. we know you.
+- next up: **gamble-with-ai** — the same casino in a browser, for every agent you use.
 
-Проверки для разработки:
+not affiliated with Anthropic. just a fan with a token problem.
 
-```bash
-claude plugin validate .
-# Отдельно весь мод: наличие marketplace.json меняет область validate .
-claude plugin validate .claude-plugin/plugin.json
-claude plugin test .
-python3 -I tools/test_count_today.py -v
-```
+<h2 align="center">why your README written like that?</h2>
 
-Тесты используют искусственные кошельки, руки, часы и ответы счётчика; реальные журналы и звук не нужны. Они проверяют чистую логику, кадры, кнопки, блокировку повторных ставок, повторное открытие после блэкджека, гонку выплаты с открытием, восстановление через повторный `session.start`, Python-лаунчеры и полночь через тестовый движок. Python-тесты проверяют изолированный запуск на синтетических журналах и пропуск недоступных файлов. У тестового кита нет операции reload: замена среды модуля, реальная отрисовка терминала и слышимость клипов требуют проверки в интерактивном CLI.
-
-Для type-check нужны декларации текущего API, которые Claude Code пишет при загрузке локального мода в `.claude-plugin/types/`. Конфиг держи вне репозитория или в игнорируемом `tsconfig.json`. Рецепт из шапки API: `target: es2023`, `lib: [es2023, esnext.typedarrays]`, `types: []`, `module: esnext`, `moduleResolution: bundler`, `strict: true`, `noUncheckedIndexedAccess: true`, `noEmit: true`, `skipLibCheck: true`, `jsx: react`, `jsxFactory: h`, `jsxFragmentFactory: Fragment`; включи `.claude-plugin/types`, `hooks`, `types`. Дополнительная библиотека типов нужна для поддерживаемых средой `Uint8Array.toBase64/fromBase64`, которых нет в `es2023`. Запуск: `tsc -p /path/to/temporary-tsconfig.json`.
-
-Формат маркетплейса: [официальная документация Claude Code](https://code.claude.com/docs/en/plugin-marketplaces).
+because it's written by a human. *mostly*.  
+gambling is bad. so is `--dangerously-skip-permissions`. you do both anyway.
