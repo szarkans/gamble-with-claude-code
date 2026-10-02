@@ -25,7 +25,8 @@ export function dashboardLayout(data: Snapshot, width: number) {
   const digitRoom = sideBySide ? room - statWidth - 3 : room
   const scale = balancePixels(value, 2)[0]!.length <= digitRoom ? 2 : 1
   const digits = balancePixels(value, scale)
-  return { balance, value, broke, sideBySide, digits, stats, statWidth, room }
+  const rows = width < 6 ? 1 : 2 + (sideBySide ? Math.max(digits.length, stats.length) : digits.length + stats.length)
+  return { balance, value, broke, sideBySide, digits, stats, statWidth, room, rows }
 }
 
 export function dashboard({ Box, Text }: Elements['terminal'], data: Snapshot, width: number) {

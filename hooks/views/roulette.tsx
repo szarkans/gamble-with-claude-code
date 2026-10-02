@@ -1,6 +1,6 @@
 import type { RouletteBet } from '../roulette'
 import { WHEEL, betLabel, color } from '../roulette'
-import { FG, GOLD, GREEN, MUTED, RED, center, frame, put } from '../raster'
+import { FG, GOLD, GREEN, MUTED, RED, center, frame, put, text } from '../raster'
 import { numberPixels, numberWidth } from '../glyphs'
 
 const tint = (n: number) => color(n) === 'red' ? RED : color(n) === 'green' ? GREEN : 0xffffff
@@ -20,7 +20,7 @@ export function ribbonLayout(columns: number, position: number) {
 }
 
 export function rouletteFrame(columns: number, result: number, choice: RouletteBet, position?: number, pulse = 0) {
-  const f = frame(columns)
+  const f = frame(columns, 16)
   center(f, 0, 'EUROPEAN ROULETTE / 0–36', GOLD)
   const selected = position ?? WHEEL.indexOf(result as typeof WHEEL[number])
   const marker = Math.floor(columns / 2)
@@ -40,9 +40,9 @@ export function rouletteFrame(columns: number, result: number, choice: RouletteB
   put(f, marker, 9, '▲', GOLD)
   const shown = position === undefined ? result : WHEEL[((Math.round(position) % 37) + 37) % 37]!
   numberPixels(f, Math.floor((columns - numberWidth(shown, 2)) / 2), 10, shown, tint(shown), 2)
-  if (position === undefined) {
-    center(f, 15, `${result} · ${color(result) === 'red' ? 'RED' : color(result) === 'black' ? 'BLACK' : 'ZERO'}`, tint(result))
-  } else center(f, 15, 'Blaming the cache…', MUTED)
-  center(f, 17, betLabel(choice), GOLD)
+  const label = position === undefined ? `${result} · ${color(result) === 'red' ? 'RED' : color(result) === 'black' ? 'BLACK' : 'ZERO'}` : 'Blaming the cache…'
+  const bet = betLabel(choice), left = Math.max(0, Math.floor((columns - label.length - bet.length - 5) / 2))
+  text(f, left, 15, label, position === undefined ? tint(result) : MUTED)
+  text(f, left + label.length, 15, '  /  ' + bet, GOLD)
   return f
 }

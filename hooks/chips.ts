@@ -122,11 +122,9 @@ export function chipLayout(groups: ChipGroup[], columns: number) {
       y += flow(right, Math.max(0, width - r), y, Math.min(width, r))
     }
   }
-  const bets = groups.filter(g => g.kind === 'bet'), gutter = 3
-  const half = Math.floor((width - gutter) / 2)
-  const labelWidth = Math.max(0, ...bets.map(g => g.label!.length)) + 1
-  const paired = bets.every(g => labelWidth + span(g.chips) <= half)
+  const gutter = width >= 64 ? 3 : 1
   const betGroup = (g: ChipGroup, left: number, top: number, room: number) => {
+    const labelWidth = g.label!.length + 1
     const beside = labelWidth + span(g.chips) <= room
     label(`label-${g.label}`, g.label!, left, top + (beside ? 1 : 0), Math.min(room, labelWidth - 1))
     return (beside ? 0 : 1) + flow(g.chips, left + (beside ? labelWidth : 0), top + (beside ? 0 : 1),
@@ -136,15 +134,19 @@ export function chipLayout(groups: ChipGroup[], columns: number) {
     const group = groups[i]!
     if (group.kind === 'tabs') split(group.chips.filter(c => c.key !== 'close'), group.chips.filter(c => c.key === 'close'))
     else if (group.kind === 'console') {
-      label('console-rule', '─'.repeat(width), 0, y, width)
-      y += 2
       split(group.chips.filter(c => !c.primary), group.chips.filter(c => c.primary))
     } else if (group.kind === 'bet') {
-      const next = groups[i + 1]
-      if (paired && next?.kind === 'bet') {
-        y += Math.max(betGroup(group, 0, y, half), betGroup(next, half + gutter, y, width - half - gutter))
+      // Группа переносится целиком; пять ставок занимают два ряда от 60 колонок.
+      let x = 0, rowHeight = 0
+      do {
+        const bet = groups[i]!, room = Math.min(width, bet.label!.length + 1 + span(bet.chips))
+        if (x && x + room > width) { y += rowHeight; x = 0; rowHeight = 0 }
+        rowHeight = Math.max(rowHeight, betGroup(bet, x, y, room))
+        x += room + gutter
         i++
-      } else y += betGroup(group, 0, y, width)
+      } while (groups[i]?.kind === 'bet')
+      y += rowHeight
+      i--
     } else {
       y++
       label('debug-label', group.label!, 0, y, width)

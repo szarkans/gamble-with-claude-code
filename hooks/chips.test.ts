@@ -77,16 +77,16 @@ test('пульт: вкладки сверху, выход справа; став
       expect(actions.at(-1)!.x + actions.at(-1)!.width).toBe(width)
       expect(actions[0]!.width).toBeGreaterThan(stakes[0]!.width)
       if (h) expect(actions.map(c => c.key)).toEqual(['hit', 'stand', 'double'])
-      const rule = layout.labels.find(l => l.key === 'console-rule')!
-      expect(rule.y + 2).toBe(stakes[0]!.y)
+      const bets = layout.placed.filter(c => c.intent.kind === 'roulette' || c.intent.kind === 'number')
+      expect(stakes[0]!.y).toBe(bets.length ? Math.max(...bets.map(c => c.y + c.lines.length)) : 3)
       const debug = layout.placed.filter(c => c.intent.kind === 'debug')
       expect(debug.every(c => c.lines.length === 1 && c.y > actions[0]!.y + 2)).toBe(true)
     }
   }
 })
 
-test('рулетка: пять групп, две колонки, число между минусом и плюсом над пультом', () => {
-  for (const width of [68, 85, 88]) {
+test('рулетка: пять групп в двух рядах, число между минусом и плюсом над пультом', () => {
+  for (const width of [60, 64, 68, 85, 88]) {
     const groups = chips({ ...data, game: 'roulette', roulettePick: 17 }, false)
     const layout = chipLayout(groups.filter(g => g.kind !== 'tabs'), width)
     const at = (key: string) => layout.placed.find(c => c.key === key)!
@@ -95,11 +95,12 @@ test('рулетка: пять групп, две колонки, число м�
     expect(at('red').y).toBe(at('black').y)
     expect(at('even').y).toBe(at('red').y)
     expect(at('odd').x).toBeGreaterThan(at('black').x + at('black').width)
-    expect(at('low').y).toBe(at('red').y + 3)
+    expect(at('low').y).toBe(at('red').y)
     expect(at('high').y).toBe(at('low').y)
-    expect(at('dozen1').y).toBe(at('low').y)
-    expect(at('dozen3').y).toBe(at('low').y)
+    expect(at('dozen1').y).toBe(at('low').y + 3)
+    expect(at('dozen3').y).toBe(at('dozen1').y)
     expect(at('number').y).toBe(at('low').y + 3)
+    expect(at('number').y).toBe(at('dozen1').y)
     expect(at('number-prev').y).toBe(at('number').y)
     expect(at('number-next').y).toBe(at('number').y)
     expect(at('number-prev').x + at('number-prev').width).toBeLessThan(at('number').x)
@@ -108,6 +109,7 @@ test('рулетка: пять групп, две колонки, число м�
     expect(at('red').selected).toBe(true)
     expect(at('number').selected).toBe(false)
     expect(at('frac-1').y).toBeGreaterThan(at('number').y + 2)
+    expect(layout.height).toBe(9)
   }
   const narrow = chipLayout(chips({ ...data, game: 'roulette' }, false), 24)
   const red = narrow.placed.find(c => c.key === 'red')!, even = narrow.placed.find(c => c.key === 'even')!

@@ -1,4 +1,4 @@
-import { drawnChips, expectBalance, pressChip } from './ui-test-helpers'
+import { drawnChips, expectBalance, pressChip, renderedLayout } from './ui-test-helpers'
 import { expect, mock, test } from 'claude-code/testing'
 import type { On, RenderPropsOf } from 'claude-code'
 import type { Hand } from '../types'
@@ -21,7 +21,7 @@ const TODAY = { total: 1000, date: '2026-10-02', midnight: 100000 }
 const inputFixture = (on: On, entries: Record<string, unknown> = {}, debug?: string) => {
   const ledger = memory(on, entries, debug), clock = mock.clock(on)
   on('ui.open', (_, e) => {
-    expect(e).toMatchObject({ focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 48 })
+    expect(e).toMatchObject({ focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 39 })
     return { value: { isPlaced: true } }
   })
   on('ui.close', () => ({ value: undefined }))
@@ -30,6 +30,45 @@ const inputFixture = (on: On, entries: Record<string, unknown> = {}, debug?: str
   on('process.run', () => ({ value: { exitCode: 0, stdout: JSON.stringify(TODAY), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   return { ledger, clock }
 }
+
+for (const debug of [undefined, '1']) test(`высота: все игры равны и весь пульт в 38 строках, DEBUG=${debug ?? 'off'}`, async ($, on) => {
+  inputFixture(on, {}, debug)
+  await $.command.run(COMMAND)
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(88) })
+  expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { flexShrink: 0 } })
+  for (const width of [64, 68, 85, 88, 200]) {
+    await ui.redraw({ ...props(width), scroll: { offset: 0, bodyRows: 37 } })
+    const heights: number[] = [], consoleBottoms: number[] = []
+    for (const game of ['slot', 'roulette', 'blackjack'] as const) {
+      await pressChip(ui, `tab-${game}`)
+      const layout = await renderedLayout(ui)
+      const controls = await ui.drawn({ in: 'controls' })
+      heights.push(layout.rows)
+      expect(layout.rows).toBeLessThanOrEqual(38)
+      expect(layout.rows).toBe(37)
+      const consoleKeys = (await drawnChips(ui)).filter(c => c.primary || c.intent.kind === 'fraction').map(c => c.key)
+      for (const key of consoleKeys) {
+        const chip = await ui.find({ key, in: 'controls' })
+        const bottom = layout.controlsTop + Number(chip?.props.top) + Number(chip?.props.height)
+        expect(bottom).toBeLessThanOrEqual(38)
+        expect(bottom).toBe(37)
+        consoleBottoms.push(bottom)
+      }
+      if (debug) {
+        expect(controls.type).toBe('Box')
+        expect(layout.controlsTop + Number((await ui.find({ key: 'debug-label', in: 'controls' }))?.props.top)).toBe(38)
+      }
+    }
+    expect(new Set(heights).size).toBe(1)
+    expect(new Set(consoleBottoms).size).toBe(1)
+  }
+  if (debug) {
+    await ui.redraw({ ...props(88), scroll: { offset: 0, bodyRows: 39 } })
+    expect((await renderedLayout(ui)).rows).toBe(39)
+  }
+  await pressChip(ui, 'close')
+  await ui.unmount()
+})
 
 test('ошибка счётчика: команда сообщает отказ и не открывает пустое казино', async ($, on) => {
   memory(on)
@@ -113,15 +152,18 @@ for (const scenario of [
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(90) })
   await expectBalance(ui, '10.0K')
   await pressChip(ui, `tab-${scenario.game}`)
+  expect((await renderedLayout(ui)).rows).toBe(39)
   const key = `debug-${scenario.outcome}`
   expect((await drawnChips(ui)).find(c => c.key === key)?.hotkey).toBe(scenario.hotkey)
   const keys = (await drawnChips(ui)).map(c => c.hotkey)
   expect(new Set(keys).size).toBe(keys.length)
   await pressChip(ui, key)
+  expect((await renderedLayout(ui)).rows).toBe(39)
   const pending = JSON.stringify(ledger['debug:day:2026-10-02'])
   await pressChip(ui, key)
   expect(JSON.stringify(ledger['debug:day:2026-10-02'])).toBe(pending)
   await clock.advance(8000)
+  expect((await renderedLayout(ui)).rows).toBe(39)
   expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: scenario.delta, hand: null })
   expect(ledger['day:2026-10-02']).toEqual(real)
   await expectBalance(ui, `${fmt(10000 + scenario.delta)}`)
@@ -365,9 +407,9 @@ test('компоновка: вкладки над табло, группы на�
   expect(await ui.find({ key: 'roll', in: 'controls' })).toBeDefined()
   expect((await ui.find({ key: 'red', in: 'controls' }))?.props.top).toBe(0)
   expect((await ui.find({ key: 'even', in: 'controls' }))?.props.top).toBe(0)
-  expect((await ui.find({ key: 'number', in: 'controls' }))?.props.top).toBe(6)
-  expect((await ui.find({ key: 'frac-1', in: 'controls' }))?.props.top).toBe(11)
-  expect((await ui.find({ key: 'roll', in: 'controls' }))?.props).toMatchObject({ left: 70, top: 11, width: 18 })
+  expect((await ui.find({ key: 'number', in: 'controls' }))?.props.top).toBe(3)
+  expect((await ui.find({ key: 'frac-1', in: 'controls' }))?.props.top).toBe(6)
+  expect((await ui.find({ key: 'roll', in: 'controls' }))?.props).toMatchObject({ left: 70, top: 6, width: 18 })
   expect((await ui.findAll({ type: 'Text', text: 'COLOR', in: 'controls' }))[0]?.props.dimColor).toBe(true)
   expect((await ui.findAll({ type: 'Text', text: 'WIN', in: 'controls' }))[0]?.props).toMatchObject({ dimColor: true, bold: false })
   await ui.key({ key: '2', in: 'navigation' })
@@ -434,7 +476,13 @@ test('21: ЕЩЁ через Client, запрещённый DOUBLE и ХВАТИ�
   const { ledger, clock } = inputFixture(on, { 'day:2026-10-02': { net: -100, hand } })
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(88) })
+  expect((await renderedLayout(ui)).rows).toBe(37)
+  for (const key of ['hit', 'stand', 'double']) {
+    const control = await ui.find({ key, in: 'controls' })
+    expect((await renderedLayout(ui)).controlsTop + Number(control?.props.top) + Number(control?.props.height)).toBe(37)
+  }
   await ui.key({ key: 'h', in: 'controls' })
+  expect((await renderedLayout(ui)).rows).toBe(37)
   await clock.advance(360)
   const pending = JSON.stringify(ledger)
   expect((await drawnChips(ui)).find(c => c.key === 'double')?.disabled).toBe(true)
@@ -443,6 +491,7 @@ test('21: ЕЩЁ через Client, запрещённый DOUBLE и ХВАТИ�
   expect(JSON.stringify(ledger)).toBe(pending)
   await ui.press({ key: 'stand' })
   await clock.advance(4000)
+  expect((await renderedLayout(ui)).rows).toBe(37)
   expect(ledger['day:2026-10-02']).toMatchObject({ net: -100, hand: null })
   await pressChip(ui, 'close')
   await ui.unmount()

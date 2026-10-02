@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Earned, Game, Hand, Phase, RouletteBet } from '../types'
 import type { Host, Snapshot } from './host'
 import { chooseFraction, chooseGame, chooseNumber, chooseRoulette, close, debugRound, isDebug, newHand, open, playHand, restore, roll, spin } from './controller'
-import { renderPanel } from './panel'
+import { PANEL_ROWS, renderPanel } from './panel'
 import { chips } from './chips'
 const PANE = 'gamble-with-claude-code'
 
@@ -82,7 +82,8 @@ function host($: EngineInterface): Host {
     paneIsOpen: async () => (await $.ui.panes()).some(pane => pane.id === PANE),
     play: name => $.audio.play({ asset: `sounds/${name}.wav` }),
     blit: cells => $.ui.blit({ requestId: PANE, key: 'stage', cells }),
-    openPane: () => $.ui.open({ id: PANE, title: 'GAMBLE WITH CLAUDE CODE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 48 }),
+    // Запрашиваем ещё две строки DEBUG; renderer отдаёт ей только свободное место.
+    openPane: () => $.ui.open({ id: PANE, title: 'GAMBLE WITH CLAUDE CODE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: PANEL_ROWS + 2 }),
   }
 }
 
@@ -101,7 +102,7 @@ export const register: Register = on => {
       const { Text } = $.ui.resolve(e)
       return <Text>Casino needs a regular Claude Code 2.1.287+ terminal. Run /casino there.</Text>
     }
-    return renderPanel($.ui.resolve(e), await snapshot($), e.props.bodyColumns, key => activate($, key))
+    return renderPanel($.ui.resolve(e), await snapshot($), e.props.bodyColumns, key => activate($, key), e.props.scroll.bodyRows)
   })
   on('ui.message', { component: 'Pane', requestId: PANE, surface: 'terminal' }, async ($, e, next) => {
     if (e.element !== 'controls' && e.element !== 'navigation') return next(e)

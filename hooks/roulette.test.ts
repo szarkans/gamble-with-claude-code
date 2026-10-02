@@ -35,6 +35,7 @@ test('лента: непрерывный ход, замедление и точ�
 
 test('рулетка: цветные крупные ячейки, фиксированный маркер и пульс результата', () => {
   const a = rouletteFrame(90, 0, { kind: 'red' }, 0), b = rouletteFrame(90, 0, { kind: 'red' }, 0.5)
+  expect(a.rows).toBe(16)
   expect(a.words[(1 * 90 + 45) * 3]).toBe('▼'.charCodeAt(0))
   expect(b.words[(1 * 90 + 45) * 3]).toBe('▼'.charCodeAt(0))
   const backgrounds = new Set(Array.from(a.words).filter((_, i) => i % 3 === 2))
@@ -43,6 +44,18 @@ test('рулетка: цветные крупные ячейки, фиксиро
   expect(encode(a)).not.toBe(encode(b))
   expect(encode(rouletteFrame(90, 32, { kind: 'red' }, undefined, 0))).not.toBe(
     encode(rouletteFrame(90, 32, { kind: 'red' }, undefined, 180)))
+})
+
+test('компактная рулетка сохраняет пять строк крупного результата и ячейки 11×7', () => {
+  const f = rouletteFrame(88, 32, { kind: 'red' })
+  const line = (y: number) => Array.from({ length: f.columns }, (_, x) => String.fromCharCode(f.words[(y * f.columns + x) * 3]!)).join('')
+  const pocket = ribbonLayout(88, WHEEL.indexOf(32)).find(c => c.number === 32)!
+  expect(line(2).slice(pocket.x, pocket.x + 11)).toBe('╭─────────╮')
+  expect(line(8).slice(pocket.x, pocket.x + 11)).toBe('╰─────────╯')
+  const digits = Array.from({ length: 5 }, (_, i) => line(10 + i))
+  expect(digits.every(s => s.includes('█'))).toBe(true)
+  expect(Math.max(...digits.map(s => s.lastIndexOf('█'))) - Math.min(...digits.map(s => s.indexOf('█'))) + 1).toBe(14)
+  expect(line(15)).toContain('32 · RED  /  Red · 1:1')
 })
 
 test('roulette: colour, parity, ranges and dozen boundaries', () => {
