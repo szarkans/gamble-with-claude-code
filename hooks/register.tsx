@@ -5,20 +5,20 @@ import type { Host, Snapshot } from './host'
 import { chooseFraction, chooseGame, chooseNumber, chooseRoulette, close, debugRound, isDebug, newHand, open, playHand, restore, roll, spin } from './controller'
 import { renderPanel } from './panel'
 import { chips } from './chips'
-const PANE = 'gambling-with-claude-code'
+const PANE = 'gamble-with-claude-code'
 
-const earned = atom({ plugin: 'gambling-with-claude-code', key: 'earned' } as const, { total: 0, date: '', midnight: 0 } as Earned, { shape: 'v1' })
-const net = atom({ plugin: 'gambling-with-claude-code', key: 'net' } as const, 0, { shape: 'v1' })
-const frac = atom({ plugin: 'gambling-with-claude-code', key: 'frac' } as const, 0.1, { shape: 'v1' })
-const reels = atom({ plugin: 'gambling-with-claude-code', key: 'reels' } as const, [0, 1, 2], { shape: 'v1' })
-const phase = atom({ plugin: 'gambling-with-claude-code', key: 'phase' } as const, 'idle' as Phase, { shape: 'v1' })
-const msg = atom({ plugin: 'gambling-with-claude-code', key: 'msg' } as const, 'Гемблинг — это плохо. Как и --dangerously-skip-permissions.', { shape: 'v1' })
-const game = atom({ plugin: 'gambling-with-claude-code', key: 'game' } as const, 'slot' as Game, { shape: 'v1' })
-const rouletteBet = atom({ plugin: 'gambling-with-claude-code', key: 'rouletteBet' } as const, { kind: 'red' } as RouletteBet, { shape: 'v1' })
-const rouletteNumber = atom({ plugin: 'gambling-with-claude-code', key: 'rouletteResult' } as const, 0, { shape: 'v1' })
-const roulettePick = atom({ plugin: 'gambling-with-claude-code', key: 'roulettePick' } as const, 0, { shape: 'v1' })
-const hand = atom({ plugin: 'gambling-with-claude-code', key: 'hand' } as const, null as Hand | null, { shape: 'v1' })
-const columns = atom({ plugin: 'gambling-with-claude-code', key: 'columns' } as const, 64, { shape: 'v1' })
+const earned = atom({ plugin: 'gamble-with-claude-code', key: 'earned' } as const, { total: 0, date: '', midnight: 0 } as Earned, { shape: 'v1' })
+const net = atom({ plugin: 'gamble-with-claude-code', key: 'net' } as const, 0, { shape: 'v1' })
+const frac = atom({ plugin: 'gamble-with-claude-code', key: 'frac' } as const, 0.1, { shape: 'v1' })
+const reels = atom({ plugin: 'gamble-with-claude-code', key: 'reels' } as const, [0, 1, 2], { shape: 'v1' })
+const phase = atom({ plugin: 'gamble-with-claude-code', key: 'phase' } as const, 'idle' as Phase, { shape: 'v1' })
+const msg = atom({ plugin: 'gamble-with-claude-code', key: 'msg' } as const, 'Gambling is bad. So is --dangerously-skip-permissions.', { shape: 'v1' })
+const game = atom({ plugin: 'gamble-with-claude-code', key: 'game' } as const, 'slot' as Game, { shape: 'v1' })
+const rouletteBet = atom({ plugin: 'gamble-with-claude-code', key: 'rouletteBet' } as const, { kind: 'red' } as RouletteBet, { shape: 'v1' })
+const rouletteNumber = atom({ plugin: 'gamble-with-claude-code', key: 'rouletteResult' } as const, 0, { shape: 'v1' })
+const roulettePick = atom({ plugin: 'gamble-with-claude-code', key: 'roulettePick' } as const, 0, { shape: 'v1' })
+const hand = atom({ plugin: 'gamble-with-claude-code', key: 'hand' } as const, null as Hand | null, { shape: 'v1' })
+const columns = atom({ plugin: 'gamble-with-claude-code', key: 'columns' } as const, 64, { shape: 'v1' })
 
 async function snapshot($: EngineInterface): Promise<Snapshot> {
   return {
@@ -74,7 +74,7 @@ function host($: EngineInterface): Host {
         } catch { /* Не установлен или недоступен: пробуем следующий запуск. */ }
       }
       if (failed) return failed
-      throw new Error('Нужен Python 3 в PATH: python3, python или py -3. Без него фишки не посчитать.')
+      throw new Error('Python 3 required in PATH: python3, python or py -3. Cannot count tokens.')
     },
     debugFlag: () => $.env.get('GWCC_DEBUG'),
     storeGet: key => $.store.get(key), storeSet: (key, value) => $.store.set(key, value),
@@ -82,24 +82,24 @@ function host($: EngineInterface): Host {
     paneIsOpen: async () => (await $.ui.panes()).some(pane => pane.id === PANE),
     play: name => $.audio.play({ asset: `sounds/${name}.wav` }),
     blit: cells => $.ui.blit({ requestId: PANE, key: 'stage', cells }),
-    openPane: () => $.ui.open({ id: PANE, title: 'TOKEN GAMBLE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 48 }),
+    openPane: () => $.ui.open({ id: PANE, title: 'GAMBLE WITH CLAUDE CODE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 48 }),
   }
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'casino', description: 'Слоты, рулетка и 21 на сегодняшних токенах Claude Code' })
+    await $.command.register({ name: 'casino', description: 'Slots, roulette and blackjack on today\'s Claude Code tokens' })
     await restore(host($))
     return next(e)
   })
   on('command.run', { command: 'casino' }, async $ => {
     const opened = await open(host($))
-    return { text: opened ? 'Казино открыто. Гемблинг — это плохо.' : 'Казино не открылось. Проверь Python 3 в PATH и доступ к локальному хранилищу; повтори /casino.' }
+    return { text: opened ? 'Casino open. Gambling is bad.' : 'Casino failed to open. Check Python 3 in PATH and local storage; retry /casino.' }
   })
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     if (e.surface !== 'terminal') {
       const { Text } = $.ui.resolve(e)
-      return <Text>Казино работает в обычном терминале Claude Code 2.1.287+. Открой там /casino.</Text>
+      return <Text>Casino needs a regular Claude Code 2.1.287+ terminal. Run /casino there.</Text>
     }
     return renderPanel($.ui.resolve(e), await snapshot($), e.props.bodyColumns, key => activate($, key))
   })

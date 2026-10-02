@@ -3,11 +3,11 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On, ProcessRunResult, RenderPropsOf } from 'claude-code'
 import type { Earned, Hand } from '../types'
 
-const PLUGIN = 'gambling-with-claude-code'
+const PLUGIN = 'gamble-with-claude-code'
 const COMMAND = { command: 'casino', args: '', origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 80 } }
 const TODAY = { total: 1000, date: '2026-10-02', midnight: 100000 }
 const props = (bodyColumns = 90): RenderPropsOf['Pane'] => ({
-  title: 'TOKEN GAMBLE', isFocused: true, bodyColumns, placement: 'inline',
+  title: 'GAMBLE WITH CLAUDE CODE', isFocused: true, bodyColumns, placement: 'inline',
   scroll: { offset: 0, bodyRows: 50 }, view: {},
 })
 type Fixtures = {
@@ -31,7 +31,7 @@ const ready = (on: On, ledger: Record<string, unknown> = {}, fixtures: Fixtures 
   let paneOpen = fixtures.existingPane ?? false
   on('ui.open', () => { paneOpen = true; return { value: { isPlaced: true } } })
   on('ui.close', () => { paneOpen = false; return { value: undefined } })
-  on('ui.panes', () => ({ value: paneOpen ? [{ id: PLUGIN, title: 'TOKEN GAMBLE', isShown: true, isFocused: true, isPlaced: true }] : [] }))
+  on('ui.panes', () => ({ value: paneOpen ? [{ id: PLUGIN, title: 'GAMBLE WITH CLAUDE CODE', isShown: true, isFocused: true, isPlaced: true }] : [] }))
   on('ui.blit', (_, e) => { if ('cells' in e) fixtures.blit?.(e.cells); return { value: {} } })
   on('audio.play', (_, e) => { if (e.clip.asset) fixtures.audio?.(e.clip.asset); return { deny: 'Без звука в тесте' } })
   on('process.run', async (_, e) => ({ value: fixtures.run ? await fixtures.run(e.argv) : result(fixtures.today?.() ?? TODAY) }))
@@ -73,8 +73,11 @@ for (const scenario of [
   } else await ui.press({ key: target })
   expect((await drawnChips(ui)).find(c => c.key === target)?.selected).toBe(true)
   expect((await drawnChips(ui)).find(c => c.key === 'frac-1')?.disabled).toBe(false)
+  const caption = target === 'tab-roulette' ? 'The house always has root.' : 'Three reels. Zero tests.'
+  expect((await ui.find({ type: 'Text', text: caption }))?.text).toBe(caption)
   await expectBalance(ui, scenario.delta === -1000 ? '9.0K' : scenario.delta === 4000 ? '14.0K' : scenario.delta === 1500 ? '11.5K' : '11.0K')
   await clock.advance(8000)
+  expect((await ui.find({ type: 'Text', text: caption }))?.text).toBe(caption)
   expect(blits.length).toBe(frames)
   expect(JSON.stringify(ledger)).toBe(paid)
   expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: scenario.delta, hand: null })
@@ -141,6 +144,7 @@ test('вкладка не теряется, когда колбэк анимац
   await finishing
   await choosing
   expect((await drawnChips(ui)).find(c => c.key === 'tab-roulette')?.selected).toBe(true)
+  expect((await ui.find({ type: 'Text', text: 'The house always has root.' }))?.text).toBe('The house always has root.')
   await expectBalance(ui, '14.0K')
   await clock.advance(8000)
   expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: 4000, hand: null })
@@ -175,7 +179,7 @@ for (const interpreter of ['python3', 'python', 'py'] as const) test(`Python 3: 
     if (argv[0] !== interpreter) throw new Error('ENOENT')
     return result()
   } })
-  expect((await $.command.run(COMMAND)).text).toContain('Казино открыто')
+  expect((await $.command.run(COMMAND)).text).toContain('Casino open')
   expect(attempts.map(argv => argv[0])).toEqual(interpreter === 'python3' ? ['python3'] : interpreter === 'python' ? ['python3', 'python'] : ['python3', 'python', 'py'])
   expect(attempts.every(argv => argv.includes('-I') && argv.at(-1)?.endsWith('/tools/count_today.py'))).toBe(true)
   if (interpreter === 'py') expect(attempts.at(-1)?.slice(0, 3)).toEqual(['py', '-3', '-I'])
@@ -188,7 +192,7 @@ test('Python 3 отсутствует: панель объясняет, что �
   ready(on, {}, { run: () => { throw new Error('ENOENT') } })
   expect((await $.command.run(COMMAND)).text).toContain('Python 3')
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  expect((await ui.find({ type: 'Text', text: 'Нужен Python 3' }))?.text).toContain('py -3')
+  expect((await ui.find({ type: 'Text', text: 'Python 3 required' }))?.text).toContain('py -3')
   await pressChip(ui, 'close')
   await ui.unmount()
 })
@@ -203,14 +207,14 @@ test('Windows: магазинный alias python3 и Python 2 не маскир�
   await $.command.run(COMMAND)
   expect(calls).toEqual(['python3', 'python', 'py'])
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  expect(await ui.find({ type: 'Text', text: 'Нужен Python 3' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Python 3 required' })).toBeDefined()
   await pressChip(ui, 'close')
   await ui.unmount()
 })
 
 test('день неизвестной формы: /casino открывается с пустым кошельком', async ($, on) => {
   ready(on, { 'day:2026-10-02': { v: 99, net: 'obsolete', hand: { player: 'old' } } })
-  expect((await $.command.run(COMMAND)).text).toContain('Казино открыто')
+  expect((await $.command.run(COMMAND)).text).toContain('Casino open')
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
   await expectBalance(ui, '1.0K')
   expect(await ui.find({ key: 'spin', in: 'controls' })).toBeDefined()
@@ -232,7 +236,7 @@ for (const game of ['slot', 'roulette'] as const) test(`незаконченна
   } }
   const pending = JSON.stringify(ledger)
   await pressChip(ui, game === 'slot' ? 'spin' : 'roll')
-  expect((await ui.find({ type: 'Text', text: 'Сначала закончи руку 21' }))?.text).toContain('merge')
+  expect((await ui.find({ type: 'Text', text: 'Finish your blackjack hand' }))?.text).toContain('merge')
   expect(JSON.stringify(ledger)).toBe(pending)
   await pressChip(ui, 'close')
   await ui.unmount()
@@ -263,8 +267,8 @@ test('ошибка расчёта в done: сообщение об API, сохр
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
   await clock.advance(480)
-  expect((await ui.find({ type: 'Text', text: 'Казино споткнулось о API' }))?.text).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'Кадр выпал' })).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: 'Casino API tripped' }))?.text).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Dropped frame' })).toBeUndefined()
   expect(ledger['day:2026-10-02']).toMatchObject({ net: -100, hand: { status: 'dealer' } })
   await pressChip(ui, 'close')
   await ui.unmount()
@@ -277,7 +281,7 @@ test('ошибка blit: сообщение про кадр, записанна�
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
   await pressChip(ui, 'debug-win')
   await clock.advance(40)
-  expect(await ui.find({ type: 'Text', text: 'Кадр выпал' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Dropped frame' })).toBeDefined()
   expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: 4000, hand: null })
   await $.command.run(COMMAND)
   await expectBalance(ui, '14.0K')

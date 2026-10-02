@@ -35,7 +35,7 @@ export function wheelPosition(n: number, elapsed: number): number {
 export const wheelIndex = (n: number, elapsed: number) => Math.floor(wheelPosition(n, elapsed)) % 37
 
 export function betLabel(choice: RouletteBet): string {
-  if (choice.kind === 'number') return `Число ${choice.value} · 35:1`
+  if (choice.kind === 'number') return `Number ${choice.value} · 35:1`
   if (choice.kind === 'dozen') return `${(choice.value - 1) * 12 + 1}–${choice.value * 12} · 2:1`
-  return { red: 'Красное', black: 'Чёрное', even: 'Чёт', odd: 'Нечет', low: '1–18', high: '19–36' }[choice.kind] + ' · 1:1'
+  return { red: 'Red', black: 'Black', even: 'Even', odd: 'Odd', low: '1–18', high: '19–36' }[choice.kind] + ' · 1:1'
 }

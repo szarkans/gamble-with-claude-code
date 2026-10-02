@@ -73,7 +73,7 @@ export function effectFrame(base: Frame, e: Effect, elapsed: number, rand: () =>
   clear(2, 6, bannerWidth <= out.columns ? bannerWidth : e.banner.length)
   banner(out, e.banner, 2, win ? GOLD : RED, bg)
   const count = effectCount(e, elapsed)
-  const label = `${win ? '+' : '−'}${count} токенов`
+  const label = `${win ? '+' : '−'}${count} tokens`
   clear(8, 1, label.length)
   center(out, 8, label, win ? GOLD : RED, bg)
   if (win) {

@@ -1,12 +1,15 @@
 {
-  "name": "szarkans-gamble",
-  "description": "Ироничное казино на сегодняшних токенах Claude Code",
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "gamble-with-claude-code",
+  "description": "A terminal casino fueled by today's Claude Code tokens",
   "owner": { "name": "szarkans" },
   "plugins": [
     {
-      "name": "gambling-with-claude-code",
+      "name": "gamble-with-claude-code",
       "source": "./",
-      "description": "Казино на токенах: слоты, европейская рулетка и блэкджек"
+      "description": "Slots, European roulette and blackjack. Bet today's Claude Code burn, with no real money.",
+      "category": "games",
+      "keywords": ["claude-code", "casino", "games", "tokens", "terminal"]
     }
   ]
 }

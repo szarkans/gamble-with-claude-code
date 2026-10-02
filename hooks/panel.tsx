@@ -23,6 +23,9 @@ export function renderPanel(elements: Elements['terminal'], data: Snapshot, colu
     <Client key="navigation" module="./chip-client.tsx" width={width}
       props={{ width, groups: groups.filter(g => g.kind === 'tabs'), shortcuts }} />
     {dashboard(elements, data, width)}
+    <Text dimColor wrap="truncate-end">
+      {width >= 53 ? "Bet today's Claude Code burn. More work, more tokens." : "Today's Claude Code burn"}
+    </Text>
     <Box flexDirection="row" justifyContent="center" width={width}>
       <Raster key="stage" columns={picture.columns} rows={picture.rows} cells={encode(picture)} />
     </Box>

@@ -29,7 +29,7 @@ export function shuffledDeck(rand: () => number): Card[] {
 }
 
 export function deal(bet: number, deck: readonly Card[]): Hand {
-  if (deck.length < 4) throw new Error('Колода пуста')
+  if (deck.length < 4) throw new Error('Deck is empty')
   return {
     player: [deck[0]!, deck[2]!], dealer: [deck[1]!, deck[3]!], deck: deck.slice(4),
     bet, doubled: false, status: 'player',
@@ -39,13 +39,13 @@ export function deal(bet: number, deck: readonly Card[]): Hand {
 export function hit(hand: Hand): Hand {
   if (hand.status !== 'player') return hand
   const card = hand.deck[0]
-  if (!card) throw new Error('Колода пуста')
+  if (!card) throw new Error('Deck is empty')
   const player = [...hand.player, card]
   return { ...hand, player, deck: hand.deck.slice(1), status: score(player) >= 21 ? 'dealer' : 'player' }
 }
 
 export function doubleDown(hand: Hand, balance: number): Hand {
-  if (!canDouble(hand, balance)) throw new Error('Double недоступен')
+  if (!canDouble(hand, balance)) throw new Error('Double unavailable')
   const drawn = hit(hand)
   return { ...drawn, bet: hand.bet * 2, doubled: true, status: 'dealer' }
 }
@@ -55,7 +55,7 @@ export function dealerStep(hand: Hand): Hand {
     return { ...hand, status: 'done' }
   }
   const card = hand.deck[0]
-  if (!card) throw new Error('Колода пуста')
+  if (!card) throw new Error('Deck is empty')
   return { ...hand, dealer: [...hand.dealer, card], deck: hand.deck.slice(1), status: 'dealer' }
 }
 

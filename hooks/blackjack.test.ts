@@ -47,7 +47,7 @@ test('21: double reserves one more bet, draws once and ends player turn', () => 
   expect(next.deck).toHaveLength(h.deck.length - 1)
   expect(canDouble(next, 1000)).toBe(false)
   expect(blackjackPayout(next)).toBe(400)
-  expect(() => doubleDown(h, 99)).toThrow('недоступен')
+  expect(() => doubleDown(h, 99)).toThrow('Double unavailable')
   expect(canDouble(hit(hand([2, 3], [10, 7])), 1000)).toBe(false)
   expect(h.bet).toBe(100)
 })

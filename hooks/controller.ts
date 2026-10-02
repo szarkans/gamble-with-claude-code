@@ -19,8 +19,8 @@ import { blackjackFrame } from './views/blackjack'
 import { rouletteFrame } from './views/roulette'
 import { slotFrame } from './views/slot'
 
-const WIN = ["You're absolutely right!", 'Тесты не запускал. Уверен в результате.', 'Проблема была в кэше.', 'LGTM, мержим.']
-const LOSE = ['I apologize for the confusion.', 'Задача выполнена. Остались небольшие замечания.', 'Работает на моей машине.', 'Давай я ещё раз проверю…']
+const WIN = ["You're absolutely right!", 'No tests. Just confidence.', 'It was the cache all along.', 'LGTM. Ship it.']
+const LOSE = ['I apologize for the confusion.', 'Task complete. Only the bugs remain.', 'Works on my machine.', 'Let me try one more fix…']
 const pick = (xs: string[]) => xs[Math.floor(Math.random() * xs.length)]!
 let columns: number | undefined, opened = false, locked = false
 let animation: Timer | undefined, poll: Timer | undefined
@@ -58,10 +58,10 @@ async function change(api: Host, date: string, fn: (day: Day) => Day | null, sho
 
 async function refresh(api: Host) {
   const { exitCode, stdout } = await api.countTokens()
-  if (exitCode !== 0) throw new Error('Счётчик токенов недоступен')
+  if (exitCode !== 0) throw new Error('Claude Code token counter unavailable')
   const er = JSON.parse(stdout) as Earned
   if (!Number.isSafeInteger(er.total) || er.total < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(er.date) || !Number.isFinite(er.midnight)) {
-    throw new Error('Счётчик вернул некорректные данные')
+    throw new Error('Claude Code token counter returned invalid data')
   }
   if (debugging) er.total = 10000
   const previous = await api.earned.get()
@@ -69,7 +69,7 @@ async function refresh(api: Host) {
   await api.earned.set(er)
   const day = await sync(api)
   if (previous.date && er.date !== previous.date) {
-    await message(api, 'Полночь. Вчерашние фишки сгорели; агент начинает новую жизнь.')
+    await message(api, 'Midnight. Yesterday\'s tokens expired. Fresh context, fresh regrets.')
     if (!animation) await setPhase(api, 'idle')
   }
   return { day, er }
@@ -81,8 +81,8 @@ async function guarded(api: Host, fn: () => Promise<void>, passive = false) {
   try { await fn(); return true }
   catch (error) {
     if (!passive) {
-      await message(api, error instanceof Error && error.message.startsWith('Нужен Python 3') ? error.message :
-        'Казино споткнулось о API. Баланс сохранён; попробуй /casino ещё раз.')
+      await message(api, error instanceof Error && error.message.startsWith('Python 3 required') ? error.message :
+        'Casino API tripped. Tokens safe; retry /casino.')
       if (!animation) await setPhase(api, 'idle')
     }
     return false
@@ -116,7 +116,7 @@ async function animate(api: Host, duration: number, paint: (t: number, width: nu
         timer.cancel()
         if (id !== generation) return
         animation = undefined; liveFrame = undefined
-        await message(api, 'Кадр выпал. Сохранённый результат ждёт в /casino.')
+        await message(api, 'Dropped frame. Saved result waiting in /casino.')
         await setPhase(api, 'idle')
         return
       }
@@ -133,7 +133,7 @@ async function animate(api: Host, duration: number, paint: (t: number, width: nu
       timer.cancel()
       if (id !== generation) return
       animation = undefined; liveFrame = undefined
-      await message(api, 'Казино споткнулось о API. Баланс сохранён; попробуй /casino ещё раз.')
+      await message(api, 'Casino API tripped. Tokens safe; retry /casino.')
       await setPhase(api, 'idle')
     }).finally(() => { drawing = false })
   })
@@ -142,7 +142,7 @@ async function animate(api: Host, duration: number, paint: (t: number, width: nu
 
 async function celebrate(api: Host, base: (width: number) => Frame, effect: Effect, date: string) {
   if (effect.won === 0) {
-    await message(api, 'Ставка вернулась. Нулевой diff, зато какая анимация.')
+    await message(api, 'Bet returned. Zero diff. Great animation.')
     await setPhase(api, 'idle')
     return
   }
@@ -151,7 +151,7 @@ async function celebrate(api: Host, base: (width: number) => Frame, effect: Effe
   const expired = (await api.earned.get()).date !== date
   const samples = Array.from({ length: 72 }, () => Math.random())
   sound(api, win ? effect.banner === 'JACKPOT' || effect.banner === 'BLACKJACK' ? 'jackpot' : 'win' : 'lose')
-  await message(api, `${effect.won > 0 ? '+' : '−'}${fmt(Math.abs(effect.won))} токенов${expired ? ` за ${date}; фишки уже сгорели` : ''}. ${pick(win ? WIN : LOSE)}`)
+  await message(api, `${effect.won > 0 ? '+' : '−'}${fmt(Math.abs(effect.won))} tokens${expired ? ` for ${date} (expired)` : ''}. ${pick(win ? WIN : LOSE)}`)
   await animate(api, effectDuration(effect), (t, width) => {
     let i = 0
     return effectFrame(base(width), effect, t, () => samples[i++ % samples.length]!)
@@ -164,7 +164,7 @@ async function betInfo(api: Host, forced = false) {
   const { day, er } = await refresh(api)
   const h = day.hand
   if (h && h.status !== 'done') {
-    await message(api, 'Сначала закончи руку 21. Дилер уже заблокировал твой merge.')
+    await message(api, 'Finish your blackjack hand. The dealer blocked your merge.')
     return null
   }
   // Любую отладочную сцену можно повторить даже после проигрыша ALL IN.
@@ -172,7 +172,7 @@ async function betInfo(api: Host, forced = false) {
   const bet = stake(balanceOf(er.total, debugging && forced ? 0 : day.net), await api.frac.get())
   if (bet <= 0) {
     await setPhase(api, 'broke')
-    await message(api, 'Claude usage limit reached. Иди работай — фишки капают с каждым токеном.')
+    await message(api, '429: out of tokens. More Claude Code work, more bad decisions.')
     return null
   }
   return { bet, date: er.date }
@@ -184,7 +184,7 @@ async function startAutomatic(api: Host, date: string, bet: number, won: number,
   // Автоматические игры фиксируют результат до шоу: reload не теряет выигрыш.
   await change(api, date, day => ({ ...day, net: day.net + won - bet }), false)
   await api.net.set(before - bet)
-  await message(api, `Ставка ${fmt(bet)}. ${text}`)
+  await message(api, `Bet ${fmt(bet)} tokens. ${text}`)
   sound(api, 'spin')
 }
 
@@ -196,7 +196,7 @@ export const spin = (api: Host, forced?: DebugOutcome) => guarded(api, async () 
   const info = await betInfo(api, !!forced)
   if (!info) return
   const { bet, date } = info, result = debugging && forced ? debugSlot(forced) : spinResult(Math.random), won = payout(result, bet)
-  await startAutomatic(api, date, bet, won, 'Генерирую результат…')
+  await startAutomatic(api, date, bet, won, 'Generating result…')
   await api.reels.set(result)
   let stopped = 0
   await animate(api, 1600, (t, width) => {
@@ -216,7 +216,7 @@ export const roll = (api: Host, forced?: DebugOutcome) => guarded(api, async () 
   const { bet, date } = info, choice = await api.rouletteBet.get()
   const result = debugging && forced ? debugRoulette(choice, forced) : rouletteResult(Math.random)
   const won = roulettePayout(result, choice, bet)
-  await startAutomatic(api, date, bet, won, 'Шарик уже в проде…')
+  await startAutomatic(api, date, bet, won, 'Ball deployed to production…')
   await api.rouletteNumber.set(result)
   let last = -1
   await animate(api, ROULETTE_MS, (t, width) => {
@@ -243,7 +243,7 @@ async function finishHand(api: Host, date: string, h: Hand) {
   if (!paid) return
   if ((await api.earned.get()).date === date) await api.hand.set(done)
   if (won === h.bet) {
-    await message(api, 'PUSH. Ничья. Даже казино не решилось принять твой PR.')
+    await message(api, 'PUSH. Even the house won\'t merge your PR.')
     await setPhase(api, 'idle')
     return
   }
@@ -277,7 +277,7 @@ export const newHand = (api: Host, forced?: DebugOutcome) => guarded(api, async 
     ({ ...day, net: day.net - info.bet, hand: h }))
   if (!reserved) return
   await setPhase(api, 'dealing')
-  await message(api, `Ставка ${fmt(info.bet)}. Карты без as any.`)
+  await message(api, `Bet ${fmt(info.bet)} tokens. No cards cast as any.`)
   let dealt = 0
   await animate(api, 1000, (t, width) => {
     const count = Math.min(4, Math.floor(t / 200))
@@ -293,7 +293,7 @@ export const newHand = (api: Host, forced?: DebugOutcome) => guarded(api, async 
       await setPhase(api, 'playing')
       await takeHandAction(api, 'hit')
     }
-    else { await setPhase(api, 'playing'); await message(api, 'Дилер ждёт. Контекст не резиновый.') }
+    else { await setPhase(api, 'playing'); await message(api, 'Dealer waiting. Your context window is finite.') }
   })
 })
 
@@ -303,7 +303,7 @@ async function takeHandAction(api: Host, action: 'hit' | 'stand' | 'double') {
   if (!h || h.status !== 'player') return
   const balance = balanceOf(er.total, day.net)
   if (action === 'double' && !canDouble(h, balance)) {
-    await message(api, 'Double: только первые две карты и ещё одна ставка в кошельке.')
+    await message(api, 'Double: first two cards, with tokens for one more bet.')
     return
   }
   const next = action === 'hit' ? hit(h) : action === 'double' ? doubleDown(h, balance) : { ...h, status: 'dealer' as const }
@@ -327,11 +327,16 @@ export function chooseGame(api: Host, g: Game): Promise<unknown> {
   return guarded(api, async () => {
     if (await api.game.get() === g) return
     const day = await sync(api), h = day.hand
-    if (h && h.status !== 'done') { await message(api, 'Сначала закончи руку. Дилер помнит твои обещания.'); return }
+    if (h && h.status !== 'done') { await message(api, 'Finish your hand. The dealer remembers your promises.'); return }
     stopAnimation()
     // Автоматический результат уже в store; меняем только показ, без повторной выплаты.
     await api.game.set(g)
     await setPhase(api, 'idle')
+    await message(api, {
+      slot: 'Three reels. Zero tests.',
+      roulette: 'The house always has root.',
+      blackjack: 'Dealer stands on 17. CI just hangs.',
+    }[g])
   })
 }
 
@@ -381,7 +386,7 @@ export const open = (api: Host) => guarded(api, async () => {
   let current: Awaited<ReturnType<typeof refresh>>
   try { current = await refresh(api) }
   catch (error) {
-    if (error instanceof Error && error.message.startsWith('Нужен Python 3')) {
+    if (error instanceof Error && error.message.startsWith('Python 3 required')) {
       opened = true
       await api.openPane()
       startPolling(api)
@@ -405,7 +410,7 @@ export const restore = (api: Host) => guarded(api, async () => {
   await setPhase(api, 'idle')
   startPolling(api)
   const { day, er } = await refresh(api)
-  await message(api, 'Казино снова в строю. Сохранённый кошелёк на месте.')
+  await message(api, 'Casino reloaded. Your tokens survived the deploy.')
   await continueHand(api, day, er.date)
 })
 

@@ -27,21 +27,21 @@ export function chips(data: Snapshot, debug: boolean): ChipGroup[] {
     disabled = busy, selected = false, primary = false, color = '#adc0d5'): Chip =>
     ({ key, label, hotkey, intent, disabled, selected, primary, color })
   const tabs = (['slot', 'roulette', 'blackjack'] as const).map((g, i) =>
-    chip(`tab-${g}`, ['СЛОТЫ', 'РУЛЕТКА', '21'][i]!, ['z', 'x', 'c'][i]!, { kind: 'game', value: g },
+    chip(`tab-${g}`, ['SLOTS', 'ROULETTE', 'BLACKJACK'][i]!, ['z', 'x', 'c'][i]!, { kind: 'game', value: g },
       activeHand, data.game === g))
-  tabs.push(chip('close', 'ВЫХОД', 'q', { kind: 'close' }, false))
+  tabs.push(chip('close', 'EXIT', 'q', { kind: 'close' }, false))
   const stakes = [0.1, 0.25, 0.5, 1].map((f, i) =>
     chip(`frac-${i + 1}`, ['10%', '25%', '50%', 'ALL'][i]!, String(i + 1), { kind: 'fraction', value: f },
       busy || activeHand || balance === 0, data.frac === f))
   const noBet = busy || activeHand || balance === 0
   const playing = data.game === 'blackjack' && data.hand?.status === 'player'
   const actions = playing ? [
-    chip('hit', 'ЕЩЁ', 'h', { kind: 'hit' }, busy, false, true),
-    chip('stand', 'ХВАТИТ', 's', { kind: 'stand' }, busy, false, true),
+    chip('hit', 'HIT', 'h', { kind: 'hit' }, busy, false, true),
+    chip('stand', 'STAND', 's', { kind: 'stand' }, busy, false, true),
     chip('double', 'DOUBLE', 'd', { kind: 'double' }, busy || !canDouble(data.hand!, balance), false, true),
   ] : [data.game === 'slot' ? chip('spin', 'SPIN', 's', { kind: 'spin' }, noBet, false, true) :
-    data.game === 'roulette' ? chip('roll', 'КРУТИТЬ', 's', { kind: 'roll' }, noBet, false, true) :
-      chip('deal', 'РАЗДАТЬ', 's', { kind: 'deal' }, noBet, false, true)]
+    data.game === 'roulette' ? chip('roll', 'SPIN', 's', { kind: 'roll' }, noBet, false, true) :
+      chip('deal', 'DEAL', 's', { kind: 'deal' }, noBet, false, true)]
   const groups: ChipGroup[] = [{ kind: 'tabs', chips: tabs }]
   if (data.game === 'roulette') {
     const current = data.rouletteBet, n = current.kind === 'number' ? current.value : data.roulettePick
@@ -49,21 +49,21 @@ export function chips(data: Snapshot, debug: boolean): ChipGroup[] {
       chip(key, label, hotkey, { kind: 'roulette', value: bet }, busy,
         current.kind === bet.kind && (!('value' in bet) || 'value' in current && current.value === bet.value), false, color)
     groups.push(
-      { kind: 'bet', label: 'ЦВЕТ', chips: [
-        choice('red', 'КРАС', 'r', { kind: 'red' }, '#ff718b'), choice('black', 'ЧЁРН', 'b', { kind: 'black' }),
+      { kind: 'bet', label: 'COLOR', chips: [
+        choice('red', 'RED', 'r', { kind: 'red' }, '#ff718b'), choice('black', 'BLACK', 'b', { kind: 'black' }),
       ] },
-      { kind: 'bet', label: 'ЧЁТНОСТЬ', chips: [
-        choice('even', 'ЧЁТ', 'e', { kind: 'even' }), choice('odd', 'НЕЧЁТ', 'o', { kind: 'odd' }),
+      { kind: 'bet', label: 'PARITY', chips: [
+        choice('even', 'EVEN', 'e', { kind: 'even' }), choice('odd', 'ODD', 'o', { kind: 'odd' }),
       ] },
-      { kind: 'bet', label: 'ПОЛОВИНА', chips: [
+      { kind: 'bet', label: 'RANGE', chips: [
         choice('low', '1–18', 'l', { kind: 'low' }), choice('high', '19–36', 'u', { kind: 'high' }),
       ] },
-      { kind: 'bet', label: 'ДЮЖИНА', chips: [
+      { kind: 'bet', label: 'DOZEN', chips: [
         choice('dozen1', '1–12', 'a', { kind: 'dozen', value: 1 }),
         choice('dozen2', '13–24', 'd', { kind: 'dozen', value: 2 }),
         choice('dozen3', '25–36', 'f', { kind: 'dozen', value: 3 }),
       ] },
-      { kind: 'bet', label: 'ЧИСЛО', chips: [
+      { kind: 'bet', label: 'NUMBER', chips: [
         chip('number-prev', '−', 'j', { kind: 'number', step: -1 }),
         choice('number', String(n), 'n', { kind: 'number', value: n }, '#67efac'),
         chip('number-next', '+', 'k', { kind: 'number', step: 1 }),

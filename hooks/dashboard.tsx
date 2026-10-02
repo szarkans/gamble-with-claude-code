@@ -11,11 +11,11 @@ export function dashboardLayout(data: Snapshot, width: number) {
   const broke = balance === 0 && !hand && !busyPhase(data.phase)
   const room = Math.max(1, width - 4)
   const stats = [
-    'ФИШКИ',
-    `сожжено   ${fmt(data.earned.total)}`,
-    `в казино  ${data.net >= 0 ? '+' : '−'}${fmt(Math.abs(data.net))}`,
-    hand ? `в руке    ${fmt(hand.bet)}` : balance > 0 ? `ставка    ${fmt(stake(balance, data.frac))}` : '',
-    broke ? 'ALL OUT. Кэш пуст.' : '',
+    'TOKENS',
+    `burned    ${fmt(data.earned.total)}`,
+    `casino    ${data.net >= 0 ? '+' : '−'}${fmt(Math.abs(data.net))}`,
+    hand ? `in hand   ${fmt(hand.bet)}` : balance > 0 ? `bet       ${fmt(stake(balance, data.frac))}` : '',
+    broke ? 'ALL OUT. Cache miss.' : '',
   ].filter(Boolean)
   let value = fmt(balance)
   // Очень узкий терминал: сохраняем суффикс и убираем дробную часть.

@@ -26,7 +26,7 @@ test('табло: цифры совпадают с пиксельным шриф
 test('табло: статистика рядом, компактный вид, банкрот без нулевой ставки', () => {
   const wide = dashboardLayout(data, 88)
   expect(wide.sideBySide).toBe(true)
-  expect(wide.stats).toEqual(['ФИШКИ', 'сожжено   6.93M', 'в казино  +0', 'ставка    693.0K'])
+  expect(wide.stats).toEqual(['TOKENS', 'burned    6.93M', 'casino    +0', 'bet       693.0K'])
   expect(wide.digits[0]!.length + wide.statWidth + 3).toBeLessThanOrEqual(wide.room)
   const compact = dashboardLayout(data, 24)
   expect(compact.sideBySide).toBe(false)
@@ -34,8 +34,8 @@ test('табло: статистика рядом, компактный вид, 
   const broke = dashboardLayout({ ...data, net: -data.earned.total }, 88)
   expect(broke.value).toBe('0')
   expect(broke.broke).toBe(true)
-  expect(broke.stats).toContain('ALL OUT. Кэш пуст.')
-  expect(broke.stats.some(line => line.includes('ставка'))).toBe(false)
+  expect(broke.stats).toContain('ALL OUT. Cache miss.')
+  expect(broke.stats.some(line => line.includes('bet'))).toBe(false)
   expect(broke.stats.join(' ')).not.toContain(data.earned.date)
 })
 
@@ -67,7 +67,7 @@ test('пульт: вкладки сверху, выход справа; став
       const actions = layout.placed.filter(c => c.primary)
       const tabs = layout.placed.filter(c => c.intent.kind === 'game')
       const exit = layout.placed.find(c => c.key === 'close')!
-      expect(tabs.map(c => c.x)).toEqual([0, 8, 18])
+      expect(tabs.map(c => c.x)).toEqual([0, 8, 19])
       expect(tabs.every(c => c.y === 0)).toBe(true)
       expect(exit.x + exit.width).toBe(width)
       expect(exit.y).toBe(0)
@@ -91,7 +91,7 @@ test('рулетка: пять групп, две колонки, число м�
     const layout = chipLayout(groups.filter(g => g.kind !== 'tabs'), width)
     const at = (key: string) => layout.placed.find(c => c.key === key)!
     expect(layout.labels.filter(l => l.key.startsWith('label-')).map(l => l.text))
-      .toEqual(['ЦВЕТ', 'ЧЁТНОСТЬ', 'ПОЛОВИНА', 'ДЮЖИНА', 'ЧИСЛО'])
+      .toEqual(['COLOR', 'PARITY', 'RANGE', 'DOZEN', 'NUMBER'])
     expect(at('red').y).toBe(at('black').y)
     expect(at('even').y).toBe(at('red').y)
     expect(at('odd').x).toBeGreaterThan(at('black').x + at('black').width)
@@ -115,13 +115,19 @@ test('рулетка: пять групп, две колонки, число м�
 })
 
 test('раскладка: жетоны в границах, без перекрытий, клавиша на жетоне', () => {
-  for (const width of [1, 2, 5, 12, 24, 40, 60, 64, 68, 85, 88, 200]) {
-    for (const game of ['slot', 'roulette', 'blackjack'] as const) {
-      const layout = chipLayout(chips({ ...data, game }, true), width)
+  const hand: NonNullable<Snapshot['hand']> = {
+    player: [{ rank: 5, suit: '♠' }, { rank: 6, suit: '♥' }],
+    dealer: [{ rank: 10, suit: '♦' }, { rank: 7, suit: '♣' }],
+    deck: [], bet: 100, doubled: false, status: 'player',
+  }
+  for (const width of [1, 2, 5, 12, 24, 40, 60, 64, 68, 85, 86, 87, 88, 89, 90, 200]) {
+    for (const game of ['slot', 'roulette', 'blackjack'] as const) for (const h of game === 'blackjack' ? [null, hand] : [null]) {
+      const layout = chipLayout(chips({ ...data, game, hand: h, phase: h ? 'playing' : 'idle' }, true), width)
       expect(layout.width).toBe(Math.min(width, 88))
       for (const c of layout.placed) {
         expect(c.x + c.width).toBeLessThanOrEqual(layout.width)
         expect(c.lines.every(line => line.length === c.width)).toBe(true)
+        if (width >= 24) expect(c.lines.some(line => line.includes(c.label))).toBe(true)
         expect(c.y + c.lines.length).toBeLessThanOrEqual(layout.height)
         expect(c.lines.at(-1)).toContain(c.hotkey)
         expect(chipAt(layout.placed, c.x, c.y)?.key).toBe(c.key)
@@ -152,7 +158,7 @@ test('21: зарезервированный ALL не объявляет бан�
   }
   const playing = { ...data, game: 'blackjack' as const, net: -data.earned.total, hand, phase: 'playing' as const }
   expect(dashboardLayout(playing, 88).broke).toBe(false)
-  expect(dashboardLayout(playing, 88).stats).toContain('в руке    6.93M')
+  expect(dashboardLayout(playing, 88).stats).toContain('in hand   6.93M')
   const controls = chips(playing, true).flatMap(g => g.chips)
   expect(controls.filter(c => !c.disabled).map(c => c.key)).toEqual(['close', 'hit', 'stand'])
   expect(controls.find(c => c.key === 'double')?.disabled).toBe(true)

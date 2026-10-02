@@ -41,8 +41,8 @@ export function rouletteFrame(columns: number, result: number, choice: RouletteB
   const shown = position === undefined ? result : WHEEL[((Math.round(position) % 37) + 37) % 37]!
   numberPixels(f, Math.floor((columns - numberWidth(shown, 2)) / 2), 10, shown, tint(shown), 2)
   if (position === undefined) {
-    center(f, 15, `${result} · ${color(result) === 'red' ? 'КРАСНОЕ' : color(result) === 'black' ? 'ЧЁРНОЕ' : 'ZERO'}`, tint(result))
-  } else center(f, 15, 'Шарик ищет виноватый кэш…', MUTED)
+    center(f, 15, `${result} · ${color(result) === 'red' ? 'RED' : color(result) === 'black' ? 'BLACK' : 'ZERO'}`, tint(result))
+  } else center(f, 15, 'Blaming the cache…', MUTED)
   center(f, 17, betLabel(choice), GOLD)
   return f
 }

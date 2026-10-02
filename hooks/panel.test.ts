@@ -4,9 +4,9 @@ import type { On, RenderPropsOf } from 'claude-code'
 import type { Hand } from '../types'
 import { fmt } from './slot'
 
-const PLUGIN = 'gambling-with-claude-code'
+const PLUGIN = 'gamble-with-claude-code'
 const props = (bodyColumns: number): RenderPropsOf['Pane'] => ({
-  title: 'TOKEN GAMBLE', isFocused: true, bodyColumns, placement: 'inline',
+  title: 'GAMBLE WITH CLAUDE CODE', isFocused: true, bodyColumns, placement: 'inline',
   scroll: { offset: 0, bodyRows: 50 }, view: {},
 })
 const COMMAND = { command: 'casino', args: '', origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 80 } }
@@ -38,7 +38,7 @@ test('ошибка счётчика: команда сообщает отказ 
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: 'fixture', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('ui.open', () => { opened = true; return { value: { isPlaced: true } } })
   const result = await $.command.run(COMMAND)
-  expect(result.text).toContain('Казино не открылось')
+  expect(result.text).toContain('Casino failed to open')
   expect(opened).toBe(false)
 })
 
@@ -59,23 +59,32 @@ test('панель: три вкладки, общая ставка, уникал
   expect(await ui.find({ key: 'debug-special', in: 'controls' })).toBeUndefined()
   expect(await ui.find({ key: 'debug-win', in: 'controls' })).toBeUndefined()
   expect(await ui.find({ key: 'debug-lose', in: 'controls' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: 'Все кнопки кликаются' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'All buttons are clickable' })).toBeUndefined()
   await pressChip(ui, 'frac-2')
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    250')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       250')
   await pressChip(ui, 'tab-roulette')
   expect(await ui.find({ key: 'roll', in: 'controls' })).toBeDefined()
   await pressChip(ui, 'number-prev')
   expect((await ui.find({ key: 'number', in: 'controls' }))?.text).toContain('36')
   await pressChip(ui, 'number-next')
   expect((await ui.find({ key: 'number', in: 'controls' }))?.text).toContain('0')
-  for (const game of ['slot', 'roulette', 'blackjack']) {
+  for (const game of ['slot', 'roulette', 'blackjack'] as const) {
     await pressChip(ui, `tab-${game}`)
+    const caption = {
+      slot: 'Three reels. Zero tests.', roulette: 'The house always has root.', blackjack: 'Dealer stands on 17. CI just hangs.',
+    }[game]
+    expect((await ui.find({ type: 'Text', text: caption }))?.text).toBe(caption)
     const keys = (await drawnChips(ui)).map(c => c.hotkey)
     expect(new Set(keys).size).toBe(keys.length)
   }
-  for (const width of [24, 40, 68, 90, 200]) {
+  for (const width of [24, 40, 52, 53, 68, 85, 88, 90, 200]) {
     await ui.redraw(props(width))
     expect((await ui.find({ key: 'stage' }))?.props.columns).toBe(Math.min(88, width))
+    const line = width >= 53 ? "Bet today's Claude Code burn. More work, more tokens." : "Today's Claude Code burn"
+    const premise = await ui.find({ type: 'Text', text: line })
+    expect(premise?.props).toMatchObject({ dimColor: true, wrap: 'truncate-end' })
+    expect(premise?.text).toBe(line)
+    expect(premise!.text.length).toBeLessThanOrEqual(Math.min(88, width))
   }
   await pressChip(ui, 'close')
   await ui.unmount()
@@ -100,7 +109,7 @@ for (const scenario of [
   on('audio.play', () => ({ deny: 'Без звука в тесте' }))
   // Отладка воспроизводится даже если сегодня не было потрачено ни одного токена.
   on('process.run', () => ({ value: { exitCode: 0, stdout: JSON.stringify({ ...TODAY, total: 0 }), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
-  expect((await $.command.run(COMMAND)).text).toContain('Казино открыто')
+  expect((await $.command.run(COMMAND)).text).toContain('Casino open')
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(90) })
   await expectBalance(ui, '10.0K')
   await pressChip(ui, `tab-${scenario.game}`)
@@ -298,14 +307,14 @@ test('ввод: мост диалога до клика и Client.onKey выби
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(200) })
   expect((await ui.find({ key: 'hotkeys' }))?.props).toMatchObject({ width: 0, height: 0, overflow: 'hidden' })
   await ui.press({ key: 'frac-2' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    250')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       250')
   expect((await ui.find({ key: 'frac-2', in: 'controls' }))?.text).toContain('┏━━━┓')
   expect((await ui.findAll({ type: 'Text', text: '25%', in: 'controls' }))[0]?.props).toMatchObject({ bold: true, dimColor: false })
   await ui.key({ key: '3', in: 'controls' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    500')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       500')
   await ui.key({ key: '2', ctrl: true, in: 'controls' })
   await ui.key({ key: '2', meta: true, in: 'controls' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    500')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       500')
   await ui.press({ key: 'tab-roulette' })
   for (const [hotkey, key] of [['r', 'red'], ['b', 'black'], ['e', 'even'], ['o', 'odd'], ['l', 'low'], ['u', 'high'],
     ['a', 'dozen1'], ['d', 'dozen2'], ['f', 'dozen3'], ['n', 'number']] as const) {
@@ -327,17 +336,17 @@ test('мышь: клики по жетонам, границы и перенос
   const target = await ui.find({ key: 'frac-2', in: 'controls' })
   const x = Number(target?.props.left) + 1, y = Number(target?.props.top) + 1
   await ui.pointer({ type: 'down', x, y, button: 'right', in: 'controls' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    100')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       100')
   await ui.pointer({ type: 'down', x, y, button: 'left', in: 'controls' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    250')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       250')
   await ui.pointer({ type: 'up', x, y, button: 'left', in: 'controls' })
   await ui.pointer({ type: 'down', x: -1, y, button: 'left', in: 'controls' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    250')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       250')
   await ui.resize({ columns: 24, rows: 30, in: 'controls' })
   const next = await ui.find({ key: 'frac-3', in: 'controls' })
   expect(Number(next?.props.left) + Number(next?.props.width)).toBeLessThanOrEqual(24)
   await ui.pointer({ type: 'down', x: Number(next?.props.left) + 1, y: Number(next?.props.top) + 1, button: 'left', in: 'controls' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    500')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       500')
   await pressChip(ui, 'close')
   await ui.unmount()
 })
@@ -350,7 +359,7 @@ test('компоновка: вкладки над табло, группы на�
   const order = ('children' in tree ? tree.children ?? [] : []).map(c =>
     typeof c === 'object' && (c.type === 'Box' || c.type === 'Client') ? c.props?.key : undefined)
   expect(order.filter(Boolean)).toEqual(['navigation', 'scoreboard', 'controls', 'hotkeys'])
-  expect((await ui.find({ key: 'close', in: 'navigation' }))?.props).toMatchObject({ left: 81, top: 0 })
+  expect((await ui.find({ key: 'close', in: 'navigation' }))?.props).toMatchObject({ left: 82, top: 0 })
   expect(await ui.find({ key: 'tab-slot', in: 'controls' })).toBeUndefined()
   await ui.key({ key: 'x', in: 'controls' })
   expect(await ui.find({ key: 'roll', in: 'controls' })).toBeDefined()
@@ -359,10 +368,10 @@ test('компоновка: вкладки над табло, группы на�
   expect((await ui.find({ key: 'number', in: 'controls' }))?.props.top).toBe(6)
   expect((await ui.find({ key: 'frac-1', in: 'controls' }))?.props.top).toBe(11)
   expect((await ui.find({ key: 'roll', in: 'controls' }))?.props).toMatchObject({ left: 70, top: 11, width: 18 })
-  expect((await ui.findAll({ type: 'Text', text: 'ЦВЕТ', in: 'controls' }))[0]?.props.dimColor).toBe(true)
+  expect((await ui.findAll({ type: 'Text', text: 'COLOR', in: 'controls' }))[0]?.props.dimColor).toBe(true)
   expect((await ui.findAll({ type: 'Text', text: 'WIN', in: 'controls' }))[0]?.props).toMatchObject({ dimColor: true, bold: false })
   await ui.key({ key: '2', in: 'navigation' })
-  expect((await ui.find({ key: 'statistics' }))?.text).toContain('ставка    2.5K')
+  expect((await ui.find({ key: 'statistics' }))?.text).toContain('bet       2.5K')
   const tab = await ui.find({ key: 'tab-blackjack', in: 'navigation' })
   await ui.pointer({ type: 'down', x: Number(tab?.props.left) + 1, y: 1, button: 'left', in: 'navigation' })
   expect(await ui.find({ key: 'deal', in: 'controls' })).toBeDefined()
@@ -445,8 +454,8 @@ test('банкрот: шутка на табло и приглушённый SPI
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(88) })
   const pending = JSON.stringify(ledger)
   const stats = (await ui.find({ key: 'statistics' }))?.text
-  expect(stats).toContain('ALL OUT. Кэш пуст.')
-  expect(stats).not.toContain('ставка')
+  expect(stats).toContain('ALL OUT. Cache miss.')
+  expect(stats).not.toContain('bet')
   expect((await ui.findAll({ type: 'Text', text: 'SPIN', in: 'controls' }))[0]?.props.dimColor).toBe(true)
   await ui.key({ key: 's', in: 'controls' })
   await ui.press({ key: 'spin' })
@@ -454,9 +463,9 @@ test('банкрот: шутка на табло и приглушённый SPI
   expect(JSON.stringify(ledger)).toBe(pending)
   expect(await ui.find({ key: 'debug-win', in: 'controls' })).toBeUndefined()
   const text = await ui.drawn()
-  expect(JSON.stringify(text)).not.toContain('Следующая ставка')
+  expect(JSON.stringify(text)).not.toContain('Next bet')
   expect(JSON.stringify(text)).not.toContain('Double:')
-  expect(JSON.stringify(text)).not.toContain('Зеро проигрывает')
+  expect(JSON.stringify(text)).not.toContain('Zero loses')
   await pressChip(ui, 'close')
   await ui.unmount()
 })

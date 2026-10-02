@@ -74,15 +74,15 @@ export function blackjackFrame(columns: number, hand: Hand | null, view?: DealVi
   center(f, 0, '21 / BLACKJACK', GOLD)
   if (!hand) {
     cards(f, [{ rank: 1, suit: '♠' }, { rank: 13, suit: '♥' }], wide ? 2 : 5, 2, false, 1, 0, !wide)
-    center(f, wide ? 15 : 16, 'Дилер стоит на 17. Как CI.', MUTED)
+    center(f, wide ? 15 : 16, 'Dealer stands on 17. CI just hangs.', MUTED)
     return f
   }
   const reveal = view?.reveal ?? hand.status !== 'player'
   const dealer = hand.dealer.slice(0, view?.dealer ?? hand.dealer.length)
   const player = hand.player.slice(0, view?.player ?? hand.player.length)
   const hidden = !reveal || (view?.flip ?? 1) < 0.5
-  const dealerLabel = `ДИЛЕР: ${!hidden ? score(dealer) : (dealer[0] ? score([dealer[0]]) + ' + ?' : '…')}`
-  const playerLabel = `ВЫ: ${score(player)}${hand.doubled ? ' / DOUBLE' : ''}`
+  const dealerLabel = `DEALER: ${!hidden ? score(dealer) : (dealer[0] ? score([dealer[0]]) + ' + ?' : '…')}`
+  const playerLabel = `YOU: ${score(player)}${hand.doubled ? ' / DOUBLE' : ''}`
   if (wide) {
     const room = Math.floor((columns - 3) / 2)
     const d = frame(room, 14), p = frame(room, 14)
@@ -97,6 +97,6 @@ export function blackjackFrame(columns: number, hand: Hand | null, view?: DealVi
     center(f, 10, playerLabel, GOLD)
     cards(f, hand.player, 11, player.length, false, 1, view?.playerSlide ?? 0, true)
   }
-  center(f, f.rows - 1, `Ставка ${hand.bet} · S17 · BJ 3:2`, MUTED)
+  center(f, f.rows - 1, `Bet ${hand.bet} tokens · S17 · BJ 3:2`, MUTED)
   return f
 }

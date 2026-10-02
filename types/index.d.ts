@@ -13,7 +13,7 @@ export type Hand = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'gambling-with-claude-code': {
+    'gamble-with-claude-code': {
       earned: Shaped<Earned>
       net: Shaped<number>
       frac: Shaped<number>
