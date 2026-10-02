@@ -26,6 +26,7 @@ let columns: number | undefined, opened = false, locked = false
 let animation: Timer | undefined, poll: Timer | undefined
 let generation = 0, liveFrame: ((width: number) => Frame) | undefined
 let debugging = false
+let pendingGame: (() => Promise<unknown>) | undefined
 
 export const setColumns = (n: number) => { columns = Math.max(1, Math.min(512, Math.floor(n))) }
 export const currentFrame = (width: number) => liveFrame?.(width)
@@ -85,7 +86,12 @@ async function guarded(api: Host, fn: () => Promise<void>, passive = false) {
       if (!animation) await setPhase(api, 'idle')
     }
     return false
-  } finally { locked = false }
+  } finally {
+    locked = false
+    const pending = pendingGame
+    pendingGame = undefined
+    await pending?.()
+  }
 }
 
 async function animate(api: Host, duration: number, paint: (t: number, width: number) => Frame,
@@ -103,6 +109,7 @@ async function animate(api: Host, duration: number, paint: (t: number, width: nu
       // Ширина переживает reload в state; render подставляет актуальную ширину панели.
       const savedWidth = await api.columns.get(), width = columns ?? savedWidth
       if (width !== savedWidth) await api.columns.set(width)
+      if (id !== generation) return
       try {
         if (opened) await api.blit(encode(paint(Math.min(elapsed, duration), width)))
       } catch {
@@ -314,13 +321,19 @@ async function takeHandAction(api: Host, action: 'hit' | 'stand' | 'double') {
 }
 export const playHand = (api: Host, action: 'hit' | 'stand' | 'double') => guarded(api, () => takeHandAction(api, action))
 
-export const chooseGame = (api: Host, g: Game) => guarded(api, async () => {
-  if (busyPhase(await api.phase.get())) return
-  const h = await api.hand.get()
-  if (h && h.status !== 'done') { await message(api, 'Сначала закончи руку. Дилер помнит твои обещания.'); return }
-  await api.game.set(g)
-  await setPhase(api, 'idle')
-})
+export function chooseGame(api: Host, g: Game): Promise<unknown> {
+  // Колбэк расчёта держит locked во время await: сохраняем последний выбор вкладки.
+  if (locked) { pendingGame = () => chooseGame(api, g); return Promise.resolve(false) }
+  return guarded(api, async () => {
+    if (await api.game.get() === g) return
+    const day = await sync(api), h = day.hand
+    if (h && h.status !== 'done') { await message(api, 'Сначала закончи руку. Дилер помнит твои обещания.'); return }
+    stopAnimation()
+    // Автоматический результат уже в store; меняем только показ, без повторной выплаты.
+    await api.game.set(g)
+    await setPhase(api, 'idle')
+  })
+}
 
 export const chooseFraction = (api: Host, f: number) => guarded(api, async () => {
   if (busyPhase(await api.phase.get())) return
@@ -328,11 +341,24 @@ export const chooseFraction = (api: Host, f: number) => guarded(api, async () =>
 })
 export const chooseRoulette = (api: Host, bet: RouletteBet) => guarded(api, async () => {
   if (busyPhase(await api.phase.get())) return
+  if (bet.kind === 'number') await api.roulettePick.set(bet.value)
   await api.rouletteBet.set(bet)
 })
 
-function stopTimers() {
+export const chooseNumber = (api: Host, step: -1 | 1) => guarded(api, async () => {
+  if (busyPhase(await api.phase.get())) return
+  const bet = await api.rouletteBet.get()
+  const n = ((bet.kind === 'number' ? bet.value : await api.roulettePick.get()) + step + 37) % 37
+  await api.roulettePick.set(n)
+  if (bet.kind === 'number') await api.rouletteBet.set({ kind: 'number', value: n })
+})
+
+function stopAnimation() {
   animation?.cancel(); animation = undefined; liveFrame = undefined; generation++
+}
+
+function stopTimers() {
+  stopAnimation()
   poll?.cancel(); poll = undefined
 }
 

@@ -5,13 +5,13 @@ import { balancePixels } from './glyphs'
 
 type Panel = Mounted<'terminal', 'Pane'>
 export async function drawnChips(ui: Panel) {
-  const client = await ui.find({ key: 'controls' })
-  return (client?.props.props as ChipProps).groups.flat()
+  const clients = await Promise.all(['navigation', 'controls'].map(key => ui.find({ key })))
+  return clients.flatMap(client => (client?.props.props as ChipProps).groups.flatMap(g => g.chips))
 }
 export async function pressChip(ui: Panel, key: string) {
   const chip = (await drawnChips(ui)).find(c => c.key === key)
   expect(chip).toBeDefined()
-  if (chip) await ui.key({ key: chip.hotkey, in: 'controls' })
+  if (chip) await ui.key({ key: chip.hotkey, in: chip.intent.kind === 'game' || chip.key === 'close' ? 'navigation' : 'controls' })
 }
 export async function expectBalance(ui: Panel, value: string) {
   const text = (await ui.find({ key: 'balance' }))?.text

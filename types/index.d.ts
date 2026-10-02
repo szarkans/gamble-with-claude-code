@@ -23,6 +23,7 @@ declare module 'claude-code' {
       game: Shaped<Game>
       rouletteBet: Shaped<RouletteBet>
       rouletteResult: Shaped<number>
+      roulettePick: Shaped<number>
       hand: Shaped<Hand | null>
       columns: Shaped<number>
     }

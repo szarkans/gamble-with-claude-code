@@ -40,6 +40,114 @@ const ready = (on: On, ledger: Record<string, unknown> = {}, fixtures: Fixtures 
   return clock
 }
 
+for (const scenario of [
+  { game: 'slot', outcome: 'win', time: 200, delta: 4000 },
+  { game: 'slot', outcome: 'lose', time: 1640, delta: -1000 },
+  { game: 'slot', outcome: 'win', time: 1640, delta: 4000 },
+  { game: 'roulette', outcome: 'win', time: 200, delta: 1000 },
+  { game: 'roulette', outcome: 'lose', time: 2840, delta: -1000 },
+  { game: 'roulette', outcome: 'win', time: 2840, delta: 1000 },
+  { game: 'roulette', outcome: 'lose', time: 3560, delta: -1000 },
+  { game: 'roulette', outcome: 'win', time: 3560, delta: 1000 },
+  { game: 'blackjack', outcome: 'special', time: 1520, delta: 1500 },
+  { game: 'blackjack', outcome: 'win', time: 1520, delta: 1000 },
+  { game: 'blackjack', outcome: 'lose', time: 1880, delta: -1000 },
+] as const) test(`смена вкладки во время шоу: ${scenario.game}/${scenario.outcome} на ${scenario.time} мс, выплата ровно один раз`, async ($, on) => {
+  const real = { v: 1, net: 250, hand: null }
+  const ledger: Record<string, unknown> = { 'day:2026-10-02': real }
+  const blits: string[] = []
+  const clock = ready(on, ledger, { debug: '1', blit: cells => { blits.push(cells) } })
+  await $.command.run(COMMAND)
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
+  await pressChip(ui, `tab-${scenario.game}`)
+  await pressChip(ui, `debug-${scenario.outcome}`)
+  await clock.advance(scenario.time)
+  expect((await drawnChips(ui)).find(c => c.key === 'frac-1')?.disabled).toBe(true)
+  expect((await drawnChips(ui)).filter(c => c.intent.kind === 'game').every(c => !c.disabled)).toBe(true)
+  const paid = JSON.stringify(ledger), frames = blits.length
+  const target = scenario.game === 'slot' ? 'tab-roulette' : 'tab-slot'
+  if (scenario.time === 200) await ui.key({ key: target === 'tab-slot' ? 'z' : 'x', in: 'controls' })
+  else if (scenario.time === 2840) {
+    const tab = await ui.find({ key: target, in: 'navigation' })
+    await ui.pointer({ type: 'down', x: Number(tab?.props.left) + 1, y: 1, button: 'left', in: 'navigation' })
+  } else await ui.press({ key: target })
+  expect((await drawnChips(ui)).find(c => c.key === target)?.selected).toBe(true)
+  expect((await drawnChips(ui)).find(c => c.key === 'frac-1')?.disabled).toBe(false)
+  await expectBalance(ui, scenario.delta === -1000 ? '9.0K' : scenario.delta === 4000 ? '14.0K' : scenario.delta === 1500 ? '11.5K' : '11.0K')
+  await clock.advance(8000)
+  expect(blits.length).toBe(frames)
+  expect(JSON.stringify(ledger)).toBe(paid)
+  expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: scenario.delta, hand: null })
+  expect(ledger['day:2026-10-02']).toEqual(real)
+  await $.command.run(COMMAND)
+  await clock.advance(8000)
+  expect(JSON.stringify(ledger)).toBe(paid)
+  await pressChip(ui, 'close')
+  await ui.unmount()
+})
+
+test('21: вкладки блокируются при раздаче, ходе игрока и ходе дилера; рука доигрывается', async ($, on) => {
+  const hand: Hand = {
+    player: [{ rank: 5, suit: '♠' }, { rank: 6, suit: '♥' }],
+    dealer: [{ rank: 10, suit: '♦' }, { rank: 7, suit: '♣' }],
+    deck: [{ rank: 10, suit: '♠' }], bet: 100, doubled: false, status: 'player',
+  }
+  const ledger: Record<string, unknown> = { 'day:2026-10-02': { v: 1, net: -100, hand } }
+  const clock = ready(on, ledger)
+  await $.command.run(COMMAND)
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
+  const assertBlocked = async () => {
+    const pending = JSON.stringify(ledger)
+    expect((await drawnChips(ui)).filter(c => c.intent.kind === 'game').every(c => c.disabled)).toBe(true)
+    await ui.key({ key: 'z', in: 'navigation' })
+    await ui.press({ key: 'tab-slot' })
+    await ui.post({ control: 'tab-slot' }, { in: 'navigation' })
+    expect((await drawnChips(ui)).find(c => c.key === 'tab-blackjack')?.selected).toBe(true)
+    expect(JSON.stringify(ledger)).toBe(pending)
+  }
+  await assertBlocked()
+  await pressChip(ui, 'double')
+  await clock.advance(200)
+  await assertBlocked()
+  await clock.advance(200)
+  await assertBlocked()
+  await clock.advance(8000)
+  expect(ledger['day:2026-10-02']).toEqual({ v: 1, net: 200, hand: null })
+  await pressChip(ui, 'tab-slot')
+  expect((await drawnChips(ui)).find(c => c.key === 'tab-slot')?.selected).toBe(true)
+  await pressChip(ui, 'close')
+  await ui.unmount()
+})
+
+test('вкладка не теряется, когда колбэк анимации ещё читает записанную выплату', async ($, on) => {
+  const ledger: Record<string, unknown> = {}
+  let armed = false, held = false
+  let entered!: () => void, release!: () => void
+  const reading = new Promise<void>(resolve => { entered = resolve })
+  const released = new Promise<void>(resolve => { release = resolve })
+  const clock = ready(on, ledger, { debug: '1', read: async value => {
+    if (armed && !held) { held = true; entered(); await released }
+    return value
+  } })
+  await $.command.run(COMMAND)
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
+  await pressChip(ui, 'debug-win')
+  armed = true
+  const finishing = clock.advance(1600)
+  await reading
+  const choosing = ui.key({ key: 'x', in: 'navigation' })
+  await clock.settle()
+  release()
+  await finishing
+  await choosing
+  expect((await drawnChips(ui)).find(c => c.key === 'tab-roulette')?.selected).toBe(true)
+  await expectBalance(ui, '14.0K')
+  await clock.advance(8000)
+  expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: 4000, hand: null })
+  await pressChip(ui, 'close')
+  await ui.unmount()
+})
+
 test('регрессия: натуральный блэкджек и два /casino платят один раз и сохраняют вкладку', async ($, on) => {
   const ledger: Record<string, unknown> = {}
   const clock = ready(on, ledger, { debug: '1' })

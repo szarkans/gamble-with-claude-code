@@ -7,7 +7,7 @@ const Chips: ClientModule<ChipProps> = (props, surface) => {
   const layout = chipLayout(props.groups, Math.min(props.width, surface.columns || props.width))
   surface.onKey(e => {
     if (e.ctrl || e.meta) return
-    const chip = layout.placed.find(c => c.hotkey === e.key.toLowerCase())
+    const chip = props.shortcuts.find(c => c.hotkey === e.key.toLowerCase())
     if (chip && !chip.disabled) surface.post({ control: chip.key })
   })
   surface.onPointer(e => {
@@ -16,9 +16,13 @@ const Chips: ClientModule<ChipProps> = (props, surface) => {
     if (chip && !chip.disabled) surface.post({ control: chip.key })
   })
   return <Box width={layout.width} height={layout.height}>
+    {layout.labels.map(label => <Box key={label.key} position="absolute" left={label.x} top={label.y}
+      width={label.width} height={1}>
+      <Text color="#adc0d5" dimColor wrap="truncate-end">{label.text}</Text>
+    </Box>)}
     {layout.placed.map(chip => <Box key={chip.key} position="absolute" left={chip.x} top={chip.y}
       width={chip.width} height={chip.lines.length}>
-      <Text color={chip.selected || chip.primary ? '#ffd166' : chip.color} dimColor={chip.disabled}
+      <Text color={chip.selected || chip.primary ? '#ffd166' : chip.color} dimColor={chip.disabled || chip.intent.kind === 'debug'}
         bold={chip.selected || chip.primary} wrap="truncate-end">{chip.lines.join('\n')}</Text>
     </Box>)}
   </Box>

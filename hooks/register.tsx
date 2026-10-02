@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import type { Earned, Game, Hand, Phase, RouletteBet } from '../types'
 import type { Host, Snapshot } from './host'
-import { chooseFraction, chooseGame, chooseRoulette, close, debugRound, isDebug, newHand, open, playHand, restore, roll, spin } from './controller'
+import { chooseFraction, chooseGame, chooseNumber, chooseRoulette, close, debugRound, isDebug, newHand, open, playHand, restore, roll, spin } from './controller'
 import { renderPanel } from './panel'
 import { chips } from './chips'
 const PANE = 'gambling-with-claude-code'
@@ -16,6 +16,7 @@ const msg = atom({ plugin: 'gambling-with-claude-code', key: 'msg' } as const, '
 const game = atom({ plugin: 'gambling-with-claude-code', key: 'game' } as const, 'slot' as Game, { shape: 'v1' })
 const rouletteBet = atom({ plugin: 'gambling-with-claude-code', key: 'rouletteBet' } as const, { kind: 'red' } as RouletteBet, { shape: 'v1' })
 const rouletteNumber = atom({ plugin: 'gambling-with-claude-code', key: 'rouletteResult' } as const, 0, { shape: 'v1' })
+const roulettePick = atom({ plugin: 'gambling-with-claude-code', key: 'roulettePick' } as const, 0, { shape: 'v1' })
 const hand = atom({ plugin: 'gambling-with-claude-code', key: 'hand' } as const, null as Hand | null, { shape: 'v1' })
 const columns = atom({ plugin: 'gambling-with-claude-code', key: 'columns' } as const, 64, { shape: 'v1' })
 
@@ -23,19 +24,20 @@ async function snapshot($: EngineInterface): Promise<Snapshot> {
   return {
     earned: await read($, earned), net: await read($, net), frac: await read($, frac), reels: await read($, reels),
     phase: await read($, phase), msg: await read($, msg), game: await read($, game),
-    rouletteBet: await read($, rouletteBet), rouletteNumber: await read($, rouletteNumber), hand: await read($, hand),
+    rouletteBet: await read($, rouletteBet), rouletteNumber: await read($, rouletteNumber), roulettePick: await read($, roulettePick), hand: await read($, hand),
   }
 }
 
 async function activate($: EngineInterface, key: string) {
   // Оба пути ввода проверяют свежий снимок; Client и клавиатурный мост могут отстать от него.
-  const control = chips(await snapshot($), isDebug()).flat().find(c => c.key === key)
+  const control = chips(await snapshot($), isDebug()).flatMap(g => g.chips).find(c => c.key === key)
   if (!control || control.disabled) return
   const api = host($), intent = control.intent
   switch (intent.kind) {
     case 'game': await chooseGame(api, intent.value); break
     case 'fraction': await chooseFraction(api, intent.value); break
     case 'roulette': await chooseRoulette(api, intent.value); break
+    case 'number': await chooseNumber(api, intent.step); break
     case 'debug': await debugRound(api, intent.value); break
     case 'spin': await spin(api); break
     case 'roll': await roll(api); break
@@ -57,6 +59,7 @@ function host($: EngineInterface): Host {
     game: { get: () => read($, game), set: v => update($, game, () => v) },
     rouletteBet: { get: () => read($, rouletteBet), set: v => update($, rouletteBet, () => v) },
     rouletteNumber: { get: () => read($, rouletteNumber), set: v => update($, rouletteNumber, () => v) },
+    roulettePick: { get: () => read($, roulettePick), set: v => update($, roulettePick, () => v) },
     hand: { get: () => read($, hand), set: v => update($, hand, () => v) },
     columns: { get: () => read($, columns), set: v => update($, columns, () => v) },
     countTokens: async () => {
@@ -79,7 +82,7 @@ function host($: EngineInterface): Host {
     paneIsOpen: async () => (await $.ui.panes()).some(pane => pane.id === PANE),
     play: name => $.audio.play({ asset: `sounds/${name}.wav` }),
     blit: cells => $.ui.blit({ requestId: PANE, key: 'stage', cells }),
-    openPane: () => $.ui.open({ id: PANE, title: 'TOKEN GAMBLE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 40 }),
+    openPane: () => $.ui.open({ id: PANE, title: 'TOKEN GAMBLE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 48 }),
   }
 }
 
@@ -100,7 +103,8 @@ export const register: Register = on => {
     }
     return renderPanel($.ui.resolve(e), await snapshot($), e.props.bodyColumns, key => activate($, key))
   })
-  on('ui.message', { component: 'Pane', requestId: PANE, element: 'controls', surface: 'terminal' }, async ($, e) => {
+  on('ui.message', { component: 'Pane', requestId: PANE, surface: 'terminal' }, async ($, e, next) => {
+    if (e.element !== 'controls' && e.element !== 'navigation') return next(e)
     if (!e.data || typeof e.data !== 'object' || !('control' in e.data) || typeof e.data.control !== 'string') return {}
     await activate($, e.data.control)
     return {}

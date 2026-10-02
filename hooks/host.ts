@@ -5,7 +5,7 @@ export const busyPhase = (p: Phase) => p === 'spinning' || p === 'dealing' || p 
 
 export type Snapshot = {
   earned: Earned; net: number; frac: number; reels: number[]; phase: Phase; msg: string
-  game: Game; rouletteBet: RouletteBet; rouletteNumber: number; hand: Hand | null
+  game: Game; rouletteBet: RouletteBet; rouletteNumber: number; roulettePick: number; hand: Hand | null
 }
 type Value<T> = { get: () => Promise<T>; set: (value: T) => Promise<unknown> }
 // Валидатор API следует за $ только в одном файле. Здесь передаём узкие вызовы.
