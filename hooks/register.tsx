@@ -1,130 +1,115 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
+import type { Earned, Game, Hand, Phase, RouletteBet } from '../types'
+import type { Host, Snapshot } from './host'
+import { chooseFraction, chooseGame, chooseNumber, chooseRoulette, close, debugRound, isDebug, newHand, open, playHand, restore, roll, spin } from './controller'
+import { PANEL_ROWS, renderPanel } from './panel'
+import { chips } from './chips'
+const PANE = 'gamble-with-claude-code'
 
-import type { Earned, Phase } from '../types'
-import { COLS, ROWS, SYMBOLS, cells, fmt, payout, spinResult } from './slot'
+const earned = atom({ plugin: 'gamble-with-claude-code', key: 'earned' } as const, { total: 0, date: '', midnight: 0 } as Earned, { shape: 'v1' })
+const net = atom({ plugin: 'gamble-with-claude-code', key: 'net' } as const, 0, { shape: 'v1' })
+const frac = atom({ plugin: 'gamble-with-claude-code', key: 'frac' } as const, 0.1, { shape: 'v1' })
+const reels = atom({ plugin: 'gamble-with-claude-code', key: 'reels' } as const, [0, 1, 2], { shape: 'v1' })
+const phase = atom({ plugin: 'gamble-with-claude-code', key: 'phase' } as const, 'idle' as Phase, { shape: 'v1' })
+const msg = atom({ plugin: 'gamble-with-claude-code', key: 'msg' } as const, 'Gambling is bad. So is --dangerously-skip-permissions.', { shape: 'v1' })
+const game = atom({ plugin: 'gamble-with-claude-code', key: 'game' } as const, 'slot' as Game, { shape: 'v1' })
+const rouletteBet = atom({ plugin: 'gamble-with-claude-code', key: 'rouletteBet' } as const, { kind: 'red' } as RouletteBet, { shape: 'v1' })
+const rouletteNumber = atom({ plugin: 'gamble-with-claude-code', key: 'rouletteResult' } as const, 0, { shape: 'v1' })
+const roulettePick = atom({ plugin: 'gamble-with-claude-code', key: 'roulettePick' } as const, 0, { shape: 'v1' })
+const hand = atom({ plugin: 'gamble-with-claude-code', key: 'hand' } as const, null as Hand | null, { shape: 'v1' })
+const columns = atom({ plugin: 'gamble-with-claude-code', key: 'columns' } as const, 64, { shape: 'v1' })
 
-const PANE = 'gambling-with-claude-code'
-
-const earned = atom({ plugin: 'gambling-with-claude-code', key: 'earned' } as const, { total: 0 } as Earned)
-const net = atom({ plugin: 'gambling-with-claude-code', key: 'net' } as const, 0)
-const frac = atom({ plugin: 'gambling-with-claude-code', key: 'frac' } as const, 0.1)
-const reels = atom({ plugin: 'gambling-with-claude-code', key: 'reels' } as const, [0, 1, 2])
-const phase = atom({ plugin: 'gambling-with-claude-code', key: 'phase' } as const, 'idle' as Phase)
-const msg = atom({ plugin: 'gambling-with-claude-code', key: 'msg' } as const, 'Гемблинг — это плохо. Как и --dangerously-skip-permissions.')
-
-const WIN = ['You\'re absolutely right!', 'Тесты не запускал. Уверен в результате.', 'Проблема была в кэше.', 'LGTM, мержим.']
-const LOSE = ['I apologize for the confusion.', 'Задача выполнена. Остались небольшие замечания.', 'Работает на моей машине.', 'Давай я ещё раз проверю…']
-const pick = (xs: string[]) => xs[Math.floor(Math.random() * xs.length)]
-const RAINBOW = [0xff2d55, 0xffcc00, 0x39ff88, 0x33d6ff, 0xb44dff]
-
-let poll: { cancel: () => void } | undefined
-let anim: { cancel: () => void } | undefined
-
-async function refresh($: EngineInterface) {
-  try {
-    const { exitCode, stdout } = await $.process.run(['python3', `${$.plugin.root}/tools/count_today.py`], { timeoutMs: 15000 })
-    if (exitCode === 0) await update($, earned, () => JSON.parse(stdout) as Earned)
-  } catch {}
+async function snapshot($: EngineInterface): Promise<Snapshot> {
+  return {
+    earned: await read($, earned), net: await read($, net), frac: await read($, frac), reels: await read($, reels),
+    phase: await read($, phase), msg: await read($, msg), game: await read($, game),
+    rouletteBet: await read($, rouletteBet), rouletteNumber: await read($, rouletteNumber), roulettePick: await read($, roulettePick), hand: await read($, hand),
+  }
 }
 
-async function spin($: EngineInterface) {
-  if ((await read($, phase)) === 'spinning') return
-  const balance = (await read($, earned)).total + (await read($, net))
-  if (balance <= 0) {
-    await update($, phase, () => 'broke' as Phase)
-    await update($, msg, () => 'Claude usage limit reached. Иди работай — фишки капают с каждым токеном.')
-    return
+async function activate($: EngineInterface, key: string) {
+  // Оба пути ввода проверяют свежий снимок; Client и клавиатурный мост могут отстать от него.
+  const control = chips(await snapshot($), isDebug()).flatMap(g => g.chips).find(c => c.key === key)
+  if (!control || control.disabled) return
+  const api = host($), intent = control.intent
+  switch (intent.kind) {
+    case 'game': await chooseGame(api, intent.value); break
+    case 'fraction': await chooseFraction(api, intent.value); break
+    case 'roulette': await chooseRoulette(api, intent.value); break
+    case 'number': await chooseNumber(api, intent.step); break
+    case 'debug': await debugRound(api, intent.value); break
+    case 'spin': await spin(api); break
+    case 'roll': await roll(api); break
+    case 'deal': await newHand(api); break
+    case 'hit': case 'stand': case 'double': await playHand(api, intent.kind); break
+    case 'close': await $.ui.close({ id: PANE }); break
   }
-  const f = await read($, frac)
-  const bet = f >= 1 ? balance : Math.max(1, Math.floor(balance * f))
-  const result = spinResult(Math.random)
-  await update($, net, n => n - bet)
-  await update($, phase, () => 'spinning' as Phase)
-  await update($, msg, () => `Ставка ${fmt(bet)}…`)
+}
 
-  const start = await $.clock.now()
-  const stopAt = [700, 1150, 1600]
-  anim?.cancel()
-  anim = $.clock.every(45, async () => {
-    const t = (await $.clock.now()) - start
-    const spinning = stopAt.map(s => t < s)
-    const shown = result.map((r, i) => (spinning[i] ? Math.floor(Math.random() * SYMBOLS.length) : r))
-    void $.ui.blit({ requestId: PANE, key: 'reels', cells: cells(shown, spinning) })
-    if (t < stopAt[2]) return
-    anim?.cancel()
-    const won = payout(result, bet)
-    await update($, reels, () => result)
-    await update($, net, n => n + won)
-    if (won > 0) {
-      await update($, phase, () => 'win' as Phase)
-      await update($, msg, () => `+${fmt(won - bet)} токенов. ${pick(WIN)}`)
-      $.ui.toast(`🎰 +${fmt(won - bet)} токенов`)
-      let k = 0
-      const flash = $.clock.every(70, () => {
-        void $.ui.blit({ requestId: PANE, key: 'reels', cells: cells(result, [false, false, false], RAINBOW[k % RAINBOW.length]) })
-        if (++k > 14) {
-          flash.cancel()
-          void $.ui.blit({ requestId: PANE, key: 'reels', cells: cells(result, [false, false, false]) })
-        }
-      })
-    } else {
-      await update($, phase, () => 'lose' as Phase)
-      await update($, msg, () => `−${fmt(bet)} токенов. ${pick(LOSE)}`)
-    }
-  })
+// Все обращения к $ видны валидатору; логика и отрисовка живут отдельно.
+function host($: EngineInterface): Host {
+  return {
+    earned: { get: () => read($, earned), set: v => update($, earned, () => v) },
+    net: { get: () => read($, net), set: v => update($, net, () => v) },
+    frac: { get: () => read($, frac), set: v => update($, frac, () => v) },
+    reels: { get: () => read($, reels), set: v => update($, reels, () => v) },
+    phase: { get: () => read($, phase), set: v => update($, phase, () => v) },
+    msg: { get: () => read($, msg), set: v => update($, msg, () => v) },
+    game: { get: () => read($, game), set: v => update($, game, () => v) },
+    rouletteBet: { get: () => read($, rouletteBet), set: v => update($, rouletteBet, () => v) },
+    rouletteNumber: { get: () => read($, rouletteNumber), set: v => update($, rouletteNumber, () => v) },
+    roulettePick: { get: () => read($, roulettePick), set: v => update($, roulettePick, () => v) },
+    hand: { get: () => read($, hand), set: v => update($, hand, () => v) },
+    columns: { get: () => read($, columns), set: v => update($, columns, () => v) },
+    countTokens: async () => {
+      let failed
+      for (const command of [['python3'], ['python'], ['py', '-3']]) {
+        try {
+          const result = await $.process.run([...command, '-I', `${$.plugin.root}/tools/count_today.py`], { timeoutMs: 15000 })
+          if (result.exitCode === 0) return result
+          // Windows App Execution Alias и Python 2 могут запуститься, но Python 3 за ними нет.
+          if (result.exitCode === 9009 || /Python was not found|No installed Python|Unknown option: -I/i.test(result.stderr)) continue
+          failed = result
+        } catch { /* Не установлен или недоступен: пробуем следующий запуск. */ }
+      }
+      if (failed) return failed
+      throw new Error('Python 3 required in PATH: python3, python or py -3. Cannot count tokens.')
+    },
+    debugFlag: () => $.env.get('GWCC_DEBUG'),
+    storeGet: key => $.store.get(key), storeSet: (key, value) => $.store.set(key, value),
+    now: () => $.clock.now(), every: (ms, fn) => $.clock.every(ms, fn),
+    paneIsOpen: async () => (await $.ui.panes()).some(pane => pane.id === PANE),
+    play: name => $.audio.play({ asset: `sounds/${name}.wav` }),
+    blit: cells => $.ui.blit({ requestId: PANE, key: 'stage', cells }),
+    // Запрашиваем ещё две строки DEBUG; renderer отдаёт ей только свободное место.
+    openPane: () => $.ui.open({ id: PANE, title: 'GAMBLE WITH CLAUDE CODE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: PANEL_ROWS + 2 }),
+  }
 }
 
 export const register: Register = on => {
-
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'gamble', description: 'Слот-машина на токенах, которые Claude Code сжёг сегодня' })
+    await $.command.register({ name: 'casino', description: 'Slots, roulette and blackjack on today\'s Claude Code tokens' })
+    await restore(host($))
     return next(e)
   })
-
-  on('command.run', { command: 'gamble' }, async $ => {
-    await refresh($)
-    poll?.cancel()
-    poll = $.clock.every(5000, () => void refresh($))  // живой счётчик, пассивно
-    await $.ui.open({ id: PANE, title: '🎰 TOKEN GAMBLE' })
-    return { text: 'Казино открыто. Гемблинг — это плохо.' }
+  on('command.run', { command: 'casino' }, async $ => {
+    const opened = await open(host($))
+    return { text: opened ? 'Casino open. Gambling is bad.' : 'Casino failed to open. Check Python 3 in PATH and local storage; retry /casino.' }
   })
-
-
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button, Raster } = $.ui.resolve(e) as any
-    const er = await read($, earned)
-    const n = await read($, net)
-    const f = await read($, frac)
-    const ph = await read($, phase)
-    const m = await read($, msg)
-    const r = await read($, reels)
-    const balance = er.total + n
-    const color = ph === 'win' ? 'green' : ph === 'lose' || ph === 'broke' ? 'red' : undefined
-    const setFrac = (v: number) => () => void update($, frac, () => v)
-    const fracBtn = (v: number, label: string, hk: string) => (
-      <Button key={label} label={label} hotkey={hk} variant={f === v ? 'primary' : undefined} onPress={setFrac(v)} />
-    )
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Box flexDirection="column">
-          <Text bold>ФИШКИ: {fmt(Math.max(0, balance))}</Text>
-          <Text dimColor>
-            Claude Code сжёг сегодня {fmt(er.total)} · {n >= 0 ? '+' + fmt(n) : '−' + fmt(-n)} в казино
-          </Text>
-        </Box>
-        {Raster && <Raster key="reels" columns={COLS} rows={ROWS} cells={cells(r, [false, false, false])} />}
-        <Text bold color={color}>{m}</Text>
-        <Box flexDirection="row" gap={1}>
-          {fracBtn(0.1, '10%', '1')}
-          {fracBtn(0.25, '25%', '2')}
-          {fracBtn(0.5, '50%', '3')}
-          {fracBtn(1, 'ALL IN', '4')}
-          <Button key="spin" label="SPIN" hotkey="s" variant="primary" onPress={() => void spin($)} />
-        </Box>
-        <Text dimColor>7 7 7 ×20 · $ $ $ ×10 · ✓✓✓ ×5 · ! ! ! ×3 · rm -rf ×3 = ×50 · пара ×1.5 · виртуальные фишки, вывода нет</Text>
-      </Box>
-    )
+    if (e.surface !== 'terminal') {
+      const { Text } = $.ui.resolve(e)
+      return <Text>Casino needs a regular Claude Code 2.1.287+ terminal. Run /casino there.</Text>
+    }
+    return renderPanel($.ui.resolve(e), await snapshot($), e.props.bodyColumns, key => activate($, key), e.props.scroll.bodyRows)
   })
+  on('ui.message', { component: 'Pane', requestId: PANE, surface: 'terminal' }, async ($, e, next) => {
+    if (e.element !== 'controls' && e.element !== 'navigation') return next(e)
+    if (!e.data || typeof e.data !== 'object' || !('control' in e.data) || typeof e.data.control !== 'string') return {}
+    await activate($, e.data.control)
+    return {}
+  })
+  on('ui.close', { id: PANE }, ($, e, next) => { close(); return next(e) })
+  on('session.end', ($, e, next) => { close(); return next(e) })
 }
