@@ -2,8 +2,9 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import type { Earned, Game, Hand, Phase, RouletteBet } from '../types'
 import type { Host, Snapshot } from './host'
-import { chooseFraction, chooseGame, chooseRoulette, close, debugRound, newHand, open, playHand, restore, roll, spin } from './controller'
+import { chooseFraction, chooseGame, chooseRoulette, close, debugRound, isDebug, newHand, open, playHand, restore, roll, spin } from './controller'
 import { renderPanel } from './panel'
+import { chips } from './chips'
 const PANE = 'gambling-with-claude-code'
 
 const earned = atom({ plugin: 'gambling-with-claude-code', key: 'earned' } as const, { total: 0, date: '', midnight: 0 } as Earned, { shape: 'v1' })
@@ -17,6 +18,32 @@ const rouletteBet = atom({ plugin: 'gambling-with-claude-code', key: 'rouletteBe
 const rouletteNumber = atom({ plugin: 'gambling-with-claude-code', key: 'rouletteResult' } as const, 0, { shape: 'v1' })
 const hand = atom({ plugin: 'gambling-with-claude-code', key: 'hand' } as const, null as Hand | null, { shape: 'v1' })
 const columns = atom({ plugin: 'gambling-with-claude-code', key: 'columns' } as const, 64, { shape: 'v1' })
+
+async function snapshot($: EngineInterface): Promise<Snapshot> {
+  return {
+    earned: await read($, earned), net: await read($, net), frac: await read($, frac), reels: await read($, reels),
+    phase: await read($, phase), msg: await read($, msg), game: await read($, game),
+    rouletteBet: await read($, rouletteBet), rouletteNumber: await read($, rouletteNumber), hand: await read($, hand),
+  }
+}
+
+async function activate($: EngineInterface, key: string) {
+  // Оба пути ввода проверяют свежий снимок; Client и клавиатурный мост могут отстать от него.
+  const control = chips(await snapshot($), isDebug()).flat().find(c => c.key === key)
+  if (!control || control.disabled) return
+  const api = host($), intent = control.intent
+  switch (intent.kind) {
+    case 'game': await chooseGame(api, intent.value); break
+    case 'fraction': await chooseFraction(api, intent.value); break
+    case 'roulette': await chooseRoulette(api, intent.value); break
+    case 'debug': await debugRound(api, intent.value); break
+    case 'spin': await spin(api); break
+    case 'roll': await roll(api); break
+    case 'deal': await newHand(api); break
+    case 'hit': case 'stand': case 'double': await playHand(api, intent.kind); break
+    case 'close': await $.ui.close({ id: PANE }); break
+  }
+}
 
 // Все обращения к $ видны валидатору; логика и отрисовка живут отдельно.
 function host($: EngineInterface): Host {
@@ -52,7 +79,7 @@ function host($: EngineInterface): Host {
     paneIsOpen: async () => (await $.ui.panes()).some(pane => pane.id === PANE),
     play: name => $.audio.play({ asset: `sounds/${name}.wav` }),
     blit: cells => $.ui.blit({ requestId: PANE, key: 'stage', cells }),
-    openPane: () => $.ui.open({ id: PANE, title: 'TOKEN GAMBLE', focus: true, closeOnEscape: true, holdToasts: true }),
+    openPane: () => $.ui.open({ id: PANE, title: 'TOKEN GAMBLE', focus: true, closeOnEscape: true, holdToasts: true, columns: 88, rows: 40 }),
   }
 }
 
@@ -71,20 +98,12 @@ export const register: Register = on => {
       const { Text } = $.ui.resolve(e)
       return <Text>Казино работает в обычном терминале Claude Code 2.1.287+. Открой там /casino.</Text>
     }
-    const api = host($)
-    const data: Snapshot = {
-      earned: await read($, earned), net: await read($, net), frac: await read($, frac), reels: await read($, reels),
-      phase: await read($, phase), msg: await read($, msg), game: await read($, game),
-      rouletteBet: await read($, rouletteBet), rouletteNumber: await read($, rouletteNumber), hand: await read($, hand),
-    }
-    return renderPanel($.ui.resolve(e), data, e.props.bodyColumns, {
-      chooseGame: g => { void chooseGame(api, g) }, chooseFraction: f => { void chooseFraction(api, f) },
-      chooseRoulette: b => { void chooseRoulette(api, b) }, spin: () => { void spin(api) }, roll: () => { void roll(api) },
-      deal: () => { void newHand(api) }, hit: () => { void playHand(api, 'hit') },
-      stand: () => { void playHand(api, 'stand') }, double: () => { void playHand(api, 'double') },
-      debug: outcome => { void debugRound(api, outcome) },
-      close: () => { void $.ui.close({ id: PANE }) },
-    })
+    return renderPanel($.ui.resolve(e), await snapshot($), e.props.bodyColumns, key => activate($, key))
+  })
+  on('ui.message', { component: 'Pane', requestId: PANE, element: 'controls', surface: 'terminal' }, async ($, e) => {
+    if (!e.data || typeof e.data !== 'object' || !('control' in e.data) || typeof e.data.control !== 'string') return {}
+    await activate($, e.data.control)
+    return {}
   })
   on('ui.close', { id: PANE }, ($, e, next) => { close(); return next(e) })
   on('session.end', ($, e, next) => { close(); return next(e) })

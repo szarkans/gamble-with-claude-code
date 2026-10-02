@@ -1,3 +1,4 @@
+import { drawnChips, expectBalance, pressChip } from './ui-test-helpers'
 import { expect, mock, test } from 'claude-code/testing'
 import type { On, ProcessRunResult, RenderPropsOf } from 'claude-code'
 import type { Earned, Hand } from '../types'
@@ -44,18 +45,18 @@ test('регрессия: натуральный блэкджек и два /cas
   const clock = ready(on, ledger, { debug: '1' })
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  await ui.press({ key: 'tab-blackjack' })
-  await ui.press({ key: 'debug-special' })
+  await pressChip(ui, 'tab-blackjack')
+  await pressChip(ui, 'debug-special')
   await clock.advance(8000)
   expect(ledger['debug:day:2026-10-02']).toMatchObject({ net: 1500, hand: null })
-  await ui.press({ key: 'tab-slot' })
+  await pressChip(ui, 'tab-slot')
   for (let i = 0; i < 2; i++) {
     await $.command.run(COMMAND)
     await clock.advance(8000)
     expect(ledger['debug:day:2026-10-02']).toMatchObject({ net: 1500, hand: null })
-    expect(await ui.find({ key: 'spin' })).toBeDefined()
+    expect(await ui.find({ key: 'spin', in: 'controls' })).toBeDefined()
   }
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -71,7 +72,7 @@ for (const interpreter of ['python3', 'python', 'py'] as const) test(`Python 3: 
   expect(attempts.every(argv => argv.includes('-I') && argv.at(-1)?.endsWith('/tools/count_today.py'))).toBe(true)
   if (interpreter === 'py') expect(attempts.at(-1)?.slice(0, 3)).toEqual(['py', '-3', '-I'])
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -80,7 +81,7 @@ test('Python 3 отсутствует: панель объясняет, что �
   expect((await $.command.run(COMMAND)).text).toContain('Python 3')
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
   expect((await ui.find({ type: 'Text', text: 'Нужен Python 3' }))?.text).toContain('py -3')
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -95,7 +96,7 @@ test('Windows: магазинный alias python3 и Python 2 не маскир�
   expect(calls).toEqual(['python3', 'python', 'py'])
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
   expect(await ui.find({ type: 'Text', text: 'Нужен Python 3' })).toBeDefined()
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -103,9 +104,9 @@ test('день неизвестной формы: /casino открывается
   ready(on, { 'day:2026-10-02': { v: 99, net: 'obsolete', hand: { player: 'old' } } })
   expect((await $.command.run(COMMAND)).text).toContain('Казино открыто')
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  expect((await ui.find({ type: 'Text', text: 'ФИШКИ:' }))?.text).toBe('ФИШКИ: 1.0K')
-  expect(await ui.find({ key: 'spin' })).toBeDefined()
-  await ui.press({ key: 'close' })
+  await expectBalance(ui, '1.0K')
+  expect(await ui.find({ key: 'spin', in: 'controls' })).toBeDefined()
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -114,7 +115,7 @@ for (const game of ['slot', 'roulette'] as const) test(`незаконченна
   ready(on, ledger)
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  await ui.press({ key: `tab-${game}` })
+  await pressChip(ui, `tab-${game}`)
   // Незаконченная рука появилась в store, пока панель показывала автоматическую игру.
   ledger['day:2026-10-02'] = { v: 1, net: -100, hand: {
     player: [{ rank: 5, suit: '♠' }, { rank: 6, suit: '♥' }],
@@ -122,10 +123,10 @@ for (const game of ['slot', 'roulette'] as const) test(`незаконченна
     deck: [], bet: 100, doubled: false, status: 'player',
   } }
   const pending = JSON.stringify(ledger)
-  await ui.press({ key: game === 'slot' ? 'spin' : 'roll' })
+  await pressChip(ui, game === 'slot' ? 'spin' : 'roll')
   expect((await ui.find({ type: 'Text', text: 'Сначала закончи руку 21' }))?.text).toContain('merge')
   expect(JSON.stringify(ledger)).toBe(pending)
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -134,12 +135,12 @@ test('рулетка: щелчок следует смене ячейки меж
   const clock = ready(on, {}, { debug: '1', audio: asset => { if (asset === 'sounds/click.wav') clicks.push(clock.now()) } })
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  await ui.press({ key: 'tab-roulette' })
-  await ui.press({ key: 'debug-win' })
+  await pressChip(ui, 'tab-roulette')
+  await pressChip(ui, 'debug-win')
   await clock.advance(500)
   expect(clicks.length).toBeGreaterThan(5)
   expect(clicks.some(t => t % 120 !== 0)).toBe(true)
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -157,7 +158,7 @@ test('ошибка расчёта в done: сообщение об API, сохр
   expect((await ui.find({ type: 'Text', text: 'Казино споткнулось о API' }))?.text).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'Кадр выпал' })).toBeUndefined()
   expect(ledger['day:2026-10-02']).toMatchObject({ net: -100, hand: { status: 'dealer' } })
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -166,13 +167,13 @@ test('ошибка blit: сообщение про кадр, записанна�
   const clock = ready(on, ledger, { debug: '1', blit: () => { throw new Error('synthetic draw failure') } })
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props() })
-  await ui.press({ key: 'debug-win' })
+  await pressChip(ui, 'debug-win')
   await clock.advance(40)
   expect(await ui.find({ type: 'Text', text: 'Кадр выпал' })).toBeDefined()
   expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: 4000, hand: null })
   await $.command.run(COMMAND)
-  expect((await ui.find({ type: 'Text', text: 'ФИШКИ:' }))?.text).toBe('ФИШКИ: 14.0K')
-  await ui.press({ key: 'close' })
+  await expectBalance(ui, '14.0K')
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -183,19 +184,19 @@ for (const game of ['slot', 'roulette', 'blackjack'] as const) test(`session.sta
   const clock = ready(on, ledger, { debug: '1', today: () => today, blit: cells => { blits.push(cells) } })
   await $.command.run(COMMAND)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(40) })
-  await ui.press({ key: `tab-${game}` })
-  await ui.press({ key: 'debug-win' })
+  await pressChip(ui, `tab-${game}`)
+  await pressChip(ui, 'debug-win')
   await clock.advance(game === 'blackjack' ? 1100 : 200)
   const before = JSON.parse(JSON.stringify(ledger))
   // Kit не заменяет среду модуля; повторяем ровно тот lifecycle, который движок вызывает при reload.
   await $.session.start({ cwd: '/fixture', surface: 'terminal', isInteractive: true })
-  if (game !== 'blackjack') expect((await ui.find({ key: 'debug-win' }))?.props.dimColor).toBe(false)
+  if (game !== 'blackjack') expect((await drawnChips(ui)).find(c => c.key === 'debug-win')?.disabled).toBe(false)
   await clock.advance(8000)
   expect(ledger['day:2026-10-02']).toEqual(before['day:2026-10-02'])
   expect(ledger['debug:day:2026-10-02']).toMatchObject({ net: game === 'slot' ? 4000 : 1000, hand: null })
-  expect(await ui.find({ key: 'debug-win' })).toBeDefined()
-  expect((await ui.find({ type: 'Text', text: 'ФИШКИ:' }))?.text).toBe(game === 'slot' ? 'ФИШКИ: 14.0K' : 'ФИШКИ: 11.0K')
-  await ui.press({ key: 'debug-win' })
+  expect(await ui.find({ key: 'debug-win', in: 'controls' })).toBeDefined()
+  await expectBalance(ui, game === 'slot' ? '14.0K' : '11.0K')
+  await pressChip(ui, 'debug-win')
   await clock.advance(80)
   const stage = await ui.find({ key: 'stage' })
   expect(stage?.props.columns).toBe(40)
@@ -203,8 +204,8 @@ for (const game of ['slot', 'roulette', 'blackjack'] as const) test(`session.sta
   await clock.advance(8000)
   today = { total: 0, date: '2026-10-03', midnight: 200000 }
   await clock.advance(5000)
-  expect((await ui.find({ type: 'Text', text: 'ФИШКИ:' }))?.text).toBe('ФИШКИ: 10.0K')
-  await ui.press({ key: 'close' })
+  await expectBalance(ui, '10.0K')
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -222,8 +223,8 @@ test('session.start после reload: рука игрока ждёт решен
   await $.session.start({ cwd: '/fixture', surface: 'terminal', isInteractive: true })
   await clock.advance(5000)
   expect(ledger['day:2026-10-02']).toEqual({ v: 1, net: -100, hand })
-  expect(await ui.find({ key: 'double' })).toBeDefined()
-  await ui.press({ key: 'close' })
+  expect(await ui.find({ key: 'double', in: 'controls' })).toBeDefined()
+  await pressChip(ui, 'close')
   await $.session.start({ cwd: '/fixture', surface: 'terminal', isInteractive: true })
   const stopped = calls
   await clock.advance(10000)
@@ -253,12 +254,12 @@ test('новая среда модуля: session.start находит откр�
   expect(blits.length).toBeGreaterThan(0)
   expect(Uint8Array.fromBase64(blits[0]!).length).toBe(32 * 20 * 12)
   const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: PLUGIN, props: props(32) })
-  expect(await ui.find({ key: 'debug-win' })).toBeDefined()
+  expect(await ui.find({ key: 'debug-win', in: 'controls' })).toBeDefined()
   await clock.advance(8000)
   expect(ledger['debug:day:2026-10-02']).toEqual({ v: 1, net: 100, hand: null })
   expect(ledger['day:2026-10-02']).toBeUndefined()
-  expect((await ui.find({ type: 'Text', text: 'ФИШКИ:' }))?.text).toBe('ФИШКИ: 10.1K')
-  await ui.press({ key: 'close' })
+  await expectBalance(ui, '10.1K')
+  await pressChip(ui, 'close')
   await ui.unmount()
 })
 
@@ -296,6 +297,6 @@ test('регрессия: колбэк выплаты и /casino со стары
   await $.command.run(COMMAND)
   await clock.advance(8000)
   expect(ledger['day:2026-10-02']).toMatchObject({ net: 100, hand: null })
-  await ui.press({ key: 'close' })
+  await pressChip(ui, 'close')
   await ui.unmount()
 })

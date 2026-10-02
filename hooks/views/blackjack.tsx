@@ -1,6 +1,5 @@
-import type { Elements } from 'claude-code'
 import type { Card, Hand } from '../blackjack'
-import { canDouble, rankLabel, score } from '../blackjack'
+import { rankLabel, score } from '../blackjack'
 import { GOLD, MUTED, center, frame, put, stamp, text } from '../raster'
 import type { Frame } from '../raster'
 import { numberPixels, pixels } from '../glyphs'
@@ -100,17 +99,4 @@ export function blackjackFrame(columns: number, hand: Hand | null, view?: DealVi
   }
   center(f, f.rows - 1, `Ставка ${hand.bet} · S17 · BJ 3:2`, MUTED)
   return f
-}
-
-export function blackjackControls({ Box, Button, Text }: Elements['terminal'], hand: Hand | null,
-  balance: number, busy: boolean, actions: { deal: () => void; hit: () => void; stand: () => void; double: () => void }) {
-  const playing = hand?.status === 'player'
-  return <Box flexDirection="column">
-    {playing ? <Box flexDirection="row" flexWrap="wrap" gap={1}>
-      <Button key="hit" label="ЕЩЁ [h]" hotkey="h" dimColor={busy} onPress={actions.hit} />
-      <Button key="stand" label="ХВАТИТ [s]" hotkey="s" variant="primary" dimColor={busy} onPress={actions.stand} />
-      <Button key="double" label="DOUBLE [d]" hotkey="d" dimColor={busy || !canDouble(hand, balance)} onPress={actions.double} />
-    </Box> : <Button key="deal" label="РАЗДАТЬ [s]" hotkey="s" variant="primary" dimColor={busy} onPress={actions.deal} />}
-    <Text dimColor>Double: ещё одна ставка и ровно одна карта. Дилер стоит на мягких 17. Без split.</Text>
-  </Box>
 }

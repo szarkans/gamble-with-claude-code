@@ -1,4 +1,3 @@
-import type { Elements } from 'claude-code'
 import type { RouletteBet } from '../roulette'
 import { WHEEL, betLabel, color } from '../roulette'
 import { FG, GOLD, GREEN, MUTED, RED, center, frame, put } from '../raster'
@@ -46,30 +45,4 @@ export function rouletteFrame(columns: number, result: number, choice: RouletteB
   } else center(f, 15, 'Шарик ищет виноватый кэш…', MUTED)
   center(f, 17, betLabel(choice), GOLD)
   return f
-}
-
-export function rouletteControls({ Box, Button, Text }: Elements['terminal'], choice: RouletteBet,
-  choose: (bet: RouletteBet) => void, roll: () => void, busy: boolean) {
-  const btn = (key: string, label: string, hotkey: string, bet: RouletteBet) =>
-    <Button key={key} label={label + ` [${hotkey}]`} hotkey={hotkey} dimColor={busy}
-      variant={choice.kind === bet.kind && (!('value' in bet) || 'value' in choice && choice.value === bet.value) ? 'primary' : undefined}
-      onPress={() => choose(bet)} />
-  const n = choice.kind === 'number' ? choice.value : 0
-  return <Box flexDirection="column">
-    <Box flexDirection="row" flexWrap="wrap" gap={1}>
-      {btn('red', 'R красное', 'r', { kind: 'red' })}{btn('black', 'B чёрное', 'b', { kind: 'black' })}
-      {btn('even', 'Чёт', 'e', { kind: 'even' })}{btn('odd', 'Нечет', 'o', { kind: 'odd' })}
-      {btn('low', '1–18', 'l', { kind: 'low' })}{btn('high', '19–36', 'u', { kind: 'high' })}
-    </Box>
-    <Box flexDirection="row" flexWrap="wrap" gap={1}>
-      {btn('dozen1', '1–12', 'a', { kind: 'dozen', value: 1 })}
-      {btn('dozen2', '13–24', 'd', { kind: 'dozen', value: 2 })}
-      {btn('dozen3', '25–36', 'f', { kind: 'dozen', value: 3 })}
-      {btn('number', `Число ${n}`, 'n', { kind: 'number', value: n })}
-      <Button key="number-prev" label="− число [j]" hotkey="j" dimColor={busy} onPress={() => choose({ kind: 'number', value: (n + 36) % 37 })} />
-      <Button key="number-next" label="+ число [k]" hotkey="k" dimColor={busy} onPress={() => choose({ kind: 'number', value: (n + 1) % 37 })} />
-    </Box>
-    <Button key="roll" label="КРУТИТЬ [s]" hotkey="s" variant="primary" dimColor={busy} onPress={roll} />
-    <Text dimColor>Зеро проигрывает внешним ставкам. Выбрана: {betLabel(choice)}</Text>
-  </Box>
 }

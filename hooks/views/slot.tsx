@@ -1,4 +1,3 @@
-import type { Elements } from 'claude-code'
 import { COLS, ROWS, SYMBOLS, cells } from '../slot'
 import { GOLD, MUTED, center, decode, frame, stamp } from '../raster'
 
@@ -13,11 +12,4 @@ export function slotFrame(columns: number, reels: readonly number[], spinning = 
   }
   center(f, 12, spinning.some(Boolean) ? 'Генерирую уверенность…' : 'Три символа. Ни одного теста.', MUTED)
   return f
-}
-
-export function slotControls({ Box, Button, Text }: Elements['terminal'], spin: () => void, busy: boolean) {
-  return <Box flexDirection="column">
-    <Button key="spin" label="SPIN [s]" hotkey="s" variant="primary" dimColor={busy} onPress={spin} />
-    <Text dimColor>777 ×20 · $$$ ×10 · ✓✓✓ ×5 · !!! ×3 · rm -rf ×3 = ×50 · соседняя пара ×1.5</Text>
-  </Box>
 }
