@@ -9,12 +9,13 @@ export const SYMBOLS = [
   { name: 'rm -rf', fg: 0xff7a00, bg: 0x2a1000, bmp: ['#   #', ' # # ', '  #  ', ' # # ', '#   #'] },
 ] as const
 
-// Три одинаковых: множитель выплаты (возвращается ставка × N). Пара в первых двух: ×1.5.
+// Три одинаковых: возвращается ставка × N. Соседняя пара: ×1.5.
 export const TRIPLE = [20, 10, 5, 3, 50]
 
 export function payout(reels: readonly number[], bet: number): number {
   const [a, b, c] = reels
-  if (a === b && b === c) return Math.floor(bet * TRIPLE[a])
+  if (a === undefined || b === undefined || c === undefined || bet <= 0) return 0
+  if (a === b && b === c) return Math.floor(bet * (TRIPLE[a] ?? 0))
   if (a === b || b === c) return Math.floor(bet * 1.5)
   return 0
 }
@@ -44,11 +45,11 @@ export function cells(shown: readonly number[], spinning: readonly boolean[], gl
       const rx = x - reel * (REEL_W + GAP)
       let cp = 0x20, fg = DEFAULT, bg = glow
       if (rx < REEL_W) {
-        const s = SYMBOLS[shown[reel]]
+        const s = SYMBOLS[shown[reel] ?? 0]!
         const k = spinning[reel] ? 0.45 : 1
         bg = spinning[reel] ? dim(s.bg, 1) : s.bg
         const px = Math.floor((rx - 1) / 2)
-        if (rx >= 1 && px < 5 && s.bmp[y][px] === '#') {
+        if (rx >= 1 && px < 5 && s.bmp[y]![px] === '#') {
           cp = 0x2588
           fg = Math.round(k * 100) === 100 ? s.fg : dim(s.fg, k)
         }

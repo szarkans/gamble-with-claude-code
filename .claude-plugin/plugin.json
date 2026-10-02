@@ -1,1 +1,1 @@
-{ "name": "gambling-with-claude-code", "version": "0.1.0", "description": "Казино в Claude Code: ставки на токены, которые он сжёг сегодня", "author": { "name": "szarkans" }, "types": "./types/index.d.ts" }
+{ "name": "gambling-with-claude-code", "description": "Слоты, рулетка и 21 в Claude Code: ставки на сегодняшние токены", "author": { "name": "szarkans" }, "types": "./types/index.d.ts" }

@@ -1,0 +1,12 @@
+{
+  "name": "szarkans-gamble",
+  "description": "Ироничное казино на сегодняшних токенах Claude Code",
+  "owner": { "name": "szarkans" },
+  "plugins": [
+    {
+      "name": "gambling-with-claude-code",
+      "source": "./",
+      "description": "Казино на токенах: слоты, европейская рулетка и блэкджек"
+    }
+  ]
+}

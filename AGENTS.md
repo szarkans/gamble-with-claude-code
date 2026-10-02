@@ -12,12 +12,24 @@
 
 ## Как устроено
 
-- `hooks/register.tsx` — мод: команда `/gamble`, панель, анимация.
-- `hooks/slot.ts` — логика слота без движка, её тесты в `hooks/slot.test.ts`.
+- `hooks/register.tsx` — вход мода: команда `/casino`, панель, восстановление после перезагрузки.
+- `hooks/controller.ts` — раунды всех игр, экономика, анимации.
+- `hooks/slot.ts`, `roulette.ts`, `blackjack.ts` — логика игр без движка; `hooks/views/` — отрисовка; `effects.ts` — эффекты победы.
+- Тесты — `hooks/*.test.ts`; `regressions.test.ts` держит найденные баги с деньгами.
 - `tools/count_today.py` — сколько токенов Claude Code сжёг с полуночи (читает `~/.claude/projects/**/*.jsonl`).
 
 ## Проверка
 
 - `claude plugin validate .` и `claude plugin test .` — до коммита.
-- Запуск: `claude --plugin-dir ~/dev/gambling-with-claude-code`, потом `/gamble`.
+- Запуск: `claude --plugin-dir ~/dev/gambling-with-claude-code`, потом `/casino`.
+- Эффекты и исходы проверять в режиме отладки: `GWCC_DEBUG=1 claude --plugin-dir …` — отдельный кошелёк на 10K и кнопки принудительного исхода.
+- Живой прогон без человека: `tmux new-session -d … "claude --plugin-dir …"`, `tmux send-keys`, `tmux capture-pane -e -p`. Тесты не ловят то, что видно только в живом CLI.
 - Моды не работают в `claude -p`, SDK, VS Code-чате и WSL-сессии десктопа. Смотреть глазами в обычном терминале.
+
+## Ловушки
+
+- Хоткеи панели работают, только если она открыта как диалог: `focus: true, closeOnEscape: true, holdToasts: true`. С одним `focus` нажатия уходят в промпт и отправляются модели.
+- Имя команды может быть занято скиллом пользователя — движок откажет моду (`refused: it is the user's /…`).
+- `$.audio.play` звучит только на macOS; в Linux и Windows терминале тишина.
+- Перезагрузка мода (`/reload-plugins`, так приходит автообновление) обнуляет переменные модуля, а `$.state` и `$.store` остаются. Всё, без чего открытая панель не живёт, восстанавливать в `session.start`.
+- Деньги: рассчитанную руку или раунд нельзя записывать в store повторно — так было с двойной выплатой блэкджека.

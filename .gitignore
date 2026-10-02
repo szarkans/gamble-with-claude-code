@@ -1,2 +1,4 @@
 .claude-plugin/types/
 node_modules/
+tsconfig.json
+__pycache__/
