@@ -1,7 +1,5 @@
 <h1 align="center">gamble with claude code</h1>
 
-<p align="center"><i>you're absolutely right! let it ride.</i></p>
-
 <p align="center"><a href="README.ru.md">[🇷🇺 →]</a> · <a href="README.zh.md">[🇨🇳 →]</a> </p>
 
 <p align="center"><img src="docs/demo.gif" alt="slots, roulette and blackjack inside Claude Code" width="720"></p>
