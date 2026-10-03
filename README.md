@@ -14,7 +14,9 @@ you burn millions of tokens a day anyway. might as well gamble them.
 - lost it all? go back to work. the wallet refills with every prompt.
 - the wallet burns at midnight. like your context window, but daily.
 
-no real money. no buying, no cashing out. ever. it's a joke about gambling, not gambling.
+> [!IMPORTANT]
+> no real money. not real tokens - you do not spend them nor you get them, you "gambling tokens" are tokens that was burnt by claude's work today.
+
 
 <h2 align="center">install</h2>
 
@@ -34,16 +36,16 @@ then `/reload-plugins` (or restart Claude Code) and
 /casino
 ```
 
-requirements: Claude Code 2.1.287+ (the one with mods) and `python3` — it counts today's tokens, standard library only. runs in the terminal; mods don't draw in `claude -p` or the VS Code chat.
+requirements: Claude Code 2.1.287+ (the one with mods) and `python3`.
 make the terminal ~50 rows tall, or scroll the panel with PageDown.
 
 want new games without lifting a finger? `/plugin` → Marketplaces → gamble-with-claude-code → **Enable auto-update**.
 
 <h2 align="center">games</h2>
 
-**slots** — three reels, 777 pays ×20, `rm -rf` ×3 pays ×50. don't ask.
+**slots** — three reels, 777 pays ×20, `rm -rf` ×3 pays ×50.
 
-**roulette** — european, 0–36. red/black, even/odd, halves, dozens, or a single number for 35:1.
+**roulette** — european, 0–36. red/black, even/odd, halves, dozens, or a single number
 
 **blackjack** — dealer stands on 17, blackjack pays 3:2, double down. no split. yet.
 
@@ -65,13 +67,10 @@ nothing leaves your machine. the mod makes zero network calls.
 
 <h2 align="center">also</h2>
 
-- sound plays on macOS only. that's Claude Code, not us.
-- `GWCC_DEBUG=1 claude` gives you a separate fake wallet and buttons that force a jackpot. for screenshots. we know you.
-- next up: **gamble-with-ai** — the same casino in a browser, for every agent you use.
+not claude code's user or don't like in-terminal view? check out [gamble-your-tokens](https://github.com/szarkans/gamble-your-tokens) - same casino but in browser!
+
+![gamble-your-tokens](https://github.com/szarkans/gamble-your-tokens/raw/main/assets/screenshot.png)
+
+---
 
 not affiliated with Anthropic. just a fan with a token problem.
-
-<h2 align="center">why your README written like that?</h2>
-
-because it's written by a human. *mostly*.  
-gambling is bad. so is `--dangerously-skip-permissions`. you do both anyway.
