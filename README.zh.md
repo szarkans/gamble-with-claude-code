@@ -1,6 +1,6 @@
 <h1 align="center">gamble with claude code</h1>
 
-<p align="center"><a href="README.md">[🇬🇧 →]</a> · <a href="README.ru.md">[🇷🇺 →]</a> </p>
+<p align="center"><a href="README.md">[🇬🇧 →]</a> · <a href="README.ru.md">[🇷🇺 →]</a> · <a href="README.ja.md">[🇯🇵 →]</a> </p>
 
 <p align="center"><img src="docs/demo.gif" alt="Claude Code 里的老虎机、轮盘和二十一点" width="720"></p>
 
