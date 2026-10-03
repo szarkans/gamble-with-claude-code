@@ -15,7 +15,7 @@ you burn millions of tokens a day anyway. might as well gamble them.
 - the wallet burns at midnight. like your context window, but daily.
 
 > [!IMPORTANT]
-> no real money. not real tokens - you do not spend them nor you get them, you "gambling tokens" are tokens that was burnt by claude's work today.
+> no real money. not real tokens either: you don't spend them and you can't win them. your "gambling tokens" are just the tokens Claude burned working today.
 
 
 <h2 align="center">install</h2>
