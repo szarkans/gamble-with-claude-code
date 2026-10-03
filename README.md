@@ -1,6 +1,6 @@
 <h1 align="center">gamble with claude code</h1>
 
-<p align="center"><a href="README.ru.md">[🇷🇺 →]</a> · <a href="README.zh.md">[🇨🇳 →]</a> </p>
+<p align="center"><a href="README.ru.md">[🇷🇺 →]</a> · <a href="README.zh.md">[🇨🇳 →]</a> · <a href="README.ja.md">[🇯🇵 →]</a> </p>
 
 <p align="center"><img src="docs/demo.gif" alt="slots, roulette and blackjack inside Claude Code" width="720"></p>
 
